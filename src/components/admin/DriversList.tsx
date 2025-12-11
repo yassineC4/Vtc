@@ -45,7 +45,9 @@ export function DriversList({ locale }: DriversListProps) {
   const loadDrivers = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/drivers')
+      const response = await fetch('/api/drivers', {
+        credentials: 'include',
+      })
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
@@ -99,6 +101,13 @@ export function DriversList({ locale }: DriversListProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validation des champs requis
+    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.phone.trim()) {
+      alert(locale === 'fr' ? 'Veuillez remplir tous les champs requis (Prénom, Nom, Téléphone)' : 'Please fill in all required fields (First Name, Last Name, Phone)')
+      return
+    }
+    
     try {
       const url = '/api/drivers'
       const method = editingDriver ? 'PATCH' : 'POST'
@@ -109,6 +118,7 @@ export function DriversList({ locale }: DriversListProps) {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       })
 
@@ -138,6 +148,7 @@ export function DriversList({ locale }: DriversListProps) {
       const response = await fetch('/api/drivers', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id }),
       })
 
@@ -162,6 +173,7 @@ export function DriversList({ locale }: DriversListProps) {
       const response = await fetch('/api/drivers', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id: driver.id, is_online: !driver.is_online }),
       })
 
