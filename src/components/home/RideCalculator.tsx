@@ -163,8 +163,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         const supabase = createClient()
         
         // Charger les chauffeurs en ligne
-        const { data: onlineDrivers, error: driversError } = await supabase
-          .from('drivers')
+        const { data: onlineDrivers, error: driversError } = await (supabase
+          .from('drivers') as any)
           .select('id')
           .eq('is_online', true)
 
@@ -181,10 +181,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
 
+        const driverIds = onlineDrivers.map((d: { id: string }) => d.id)
+
         const { data: activeBookings, error: bookingsError } = await (supabase
           .from('bookings') as any)
           .select('driver_id')
-          .in('driver_id', onlineDrivers.map(d => d.id))
+          .in('driver_id', driverIds)
           .in('status', ['confirmed', 'in_progress'])
           .gte('scheduled_date', oneHourAgo.toISOString())
           .lte('scheduled_date', oneHourLater.toISOString())
@@ -192,9 +194,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         if (bookingsError) throw bookingsError
 
         // Si tous les chauffeurs en ligne ont des courses, pas disponible
-        const availableDriverIds = onlineDrivers
-          .map(d => d.id)
-          .filter(id => !activeBookings?.some(b => b.driver_id === id))
+        const availableDriverIds = driverIds
+          .filter((id: string) => !activeBookings?.some((b: { driver_id: string }) => b.driver_id === id))
 
         setIsImmediateAvailable(availableDriverIds.length > 0)
       } catch (error) {
