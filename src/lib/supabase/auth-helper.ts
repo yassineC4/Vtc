@@ -6,6 +6,7 @@ import { Database } from '@/types/database'
  * Vérifie si l'utilisateur est authentifié
  * À utiliser dans les routes API pour protéger les endpoints admin
  * Utilise getUser() au lieu de getSession() pour une meilleure sécurité (vérifie le JWT directement)
+ * Gère correctement les cookies comme le middleware
  */
 export async function requireAuth(request: NextRequest) {
   try {
@@ -29,24 +30,47 @@ export async function requireAuth(request: NextRequest) {
       }
     }
 
-    // Créer un client Supabase qui lit les cookies depuis la requête
+    // Créer une réponse pour pouvoir modifier les cookies
+    let response = NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    })
+
+    // Créer un client Supabase qui gère les cookies correctement (comme le middleware)
     const supabase = createServerClient<Database>(
       supabaseUrl,
       supabaseAnonKey,
       {
         cookies: {
-          getAll() {
-            // Lire les cookies depuis la requête
-            // Compatible avec Vercel et les edge functions
-            return request.cookies.getAll().map(cookie => ({
-              name: cookie.name,
-              value: cookie.value,
-            }))
+          get(name: string) {
+            return request.cookies.get(name)?.value
           },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-            // Dans les routes API, on ne peut pas modifier les cookies directement
-            // Les cookies seront mis à jour par le client Supabase côté navigateur
-            // Cette méthode est appelée mais on ne fait rien ici
+          set(name: string, value: string, options: any) {
+            // Mettre à jour les cookies dans la requête et la réponse
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: any) {
+            // Supprimer les cookies dans la requête et la réponse
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
           },
         },
       }
@@ -93,6 +117,7 @@ export async function requireAuth(request: NextRequest) {
       user,
       session,
       supabase,
+      response, // Retourner la réponse avec les cookies mis à jour
     }
   } catch (error) {
     console.error('Auth check error:', error)

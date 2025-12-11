@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Retourner la réponse avec cache: 'no-store' pour éviter les problèmes de cache Vercel
+    // Le middleware gère déjà les cookies, pas besoin de les propager ici
     return NextResponse.json(
       { data }, 
       { 
