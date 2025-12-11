@@ -17,35 +17,76 @@ export function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    let isMounted = true
+
     const checkAuth = async () => {
       // Si on est sur la page de login, ne pas vérifier l'authentification
       if (pathname === '/admin/login') {
-        setIsChecking(false)
+        if (isMounted) {
+          setIsChecking(false)
+        }
         return
       }
 
       try {
         const supabase = createClient()
+        
+        // Ajouter un timeout pour éviter que ça reste bloqué (5 secondes)
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.warn('Auth check timeout, redirecting to login')
+            setIsChecking(false)
+            setIsAuthenticated(false)
+            router.push('/admin/login')
+          }
+        }, 5000)
+        
         const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+
+        if (!isMounted) return
 
         if (error || !session) {
           // Pas de session, rediriger vers login
+          console.log('No session found, redirecting to login')
+          setIsChecking(false)
+          setIsAuthenticated(false)
           router.push('/admin/login')
           return
         }
 
         // Session valide
         setIsAuthenticated(true)
+        setIsChecking(false)
       } catch (err) {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+        if (!isMounted) return
+        
         console.error('Error checking auth:', err)
         // En cas d'erreur, rediriger vers login
-        router.push('/admin/login')
-      } finally {
         setIsChecking(false)
+        setIsAuthenticated(false)
+        router.push('/admin/login')
       }
     }
 
     checkAuth()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
   }, [pathname, router])
 
   // Si on vérifie encore, afficher un loader

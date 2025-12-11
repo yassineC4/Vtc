@@ -44,6 +44,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       if (!driversResponse.ok) {
         if (driversResponse.status === 401) {
           // Rediriger vers login si non authentifié
+          setLoading(false)
           router.push('/admin/login')
           return
         }
@@ -60,6 +61,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       if (!bookingsResponse.ok) {
         if (bookingsResponse.status === 401) {
           // Rediriger vers login si non authentifié
+          setLoading(false)
           router.push('/admin/login')
           return
         }
@@ -88,11 +90,14 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
 
       setPendingBookings(pending as Booking[])
       setConfirmedBookings(confirmed)
+      setLoading(false)
     } catch (error) {
       console.error('Error loading data:', error)
-      // Ne pas afficher d'alerte, la redirection est déjà gérée
-    } finally {
       setLoading(false)
+      // Si erreur 401 non gérée, rediriger vers login
+      if (error instanceof Error && error.message.includes('401')) {
+        router.push('/admin/login')
+      }
     }
   }
 
