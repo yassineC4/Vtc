@@ -23,8 +23,8 @@ export default function LoginPage() {
     const checkSession = async () => {
       try {
         const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (session && !error) {
           router.push('/admin')
           router.refresh()
         }
