@@ -163,14 +163,16 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         const supabase = createClient()
         
         // Charger les chauffeurs en ligne
-        const { data: onlineDrivers, error: driversError } = await (supabase
+        const { data: onlineDriversData, error: driversError } = await (supabase
           .from('drivers') as any)
           .select('id')
           .eq('is_online', true)
 
         if (driversError) throw driversError
 
-        if (!onlineDrivers || onlineDrivers.length === 0) {
+        const onlineDrivers = (onlineDriversData || []) as Array<{ id: string }>
+
+        if (onlineDrivers.length === 0) {
           setIsImmediateAvailable(false)
           setCheckingAvailability(false)
           return
@@ -181,7 +183,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
 
-        const driverIds = onlineDrivers.map((d: { id: string }) => d.id)
+        const driverIds = onlineDrivers.map(d => d.id)
 
         const { data: activeBookings, error: bookingsError } = await (supabase
           .from('bookings') as any)
