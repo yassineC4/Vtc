@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/supabase/auth-helper'
 
 export async function POST(request: NextRequest) {
   try {
+    // POST peut être public (création de réservation par les clients)
+    // Mais on peut aussi le protéger si nécessaire
+    // Pour l'instant, on laisse public car c'est pour les réservations clients
     const body = await request.json()
     const supabase = await createAdminClient()
 
@@ -32,6 +36,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Vérifier l'authentification - seulement les admins peuvent voir les réservations
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -70,6 +80,12 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Vérifier l'authentification - seulement les admins peuvent modifier les réservations
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const body = await request.json()
     const { id, ...updates } = body
 

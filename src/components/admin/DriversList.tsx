@@ -45,17 +45,21 @@ export function DriversList({ locale }: DriversListProps) {
   const loadDrivers = async () => {
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setDrivers(data || [])
+      const response = await fetch('/api/drivers')
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setDrivers(result.data || [])
     } catch (error) {
       console.error('Error loading drivers:', error)
       setDrivers([])
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        alert(locale === 'fr' ? 'Vous devez être connecté pour voir les chauffeurs' : 'You must be logged in to view drivers')
+      }
     } finally {
       setLoading(false)
     }
@@ -96,28 +100,32 @@ export function DriversList({ locale }: DriversListProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const supabase = createClient()
-      
-      if (editingDriver) {
-        const { error } = await (supabase
-          .from('drivers') as any)
-          .update(formData)
-          .eq('id', editingDriver.id)
-        
-        if (error) throw error
-      } else {
-        const { error } = await (supabase
-          .from('drivers') as any)
-          .insert([formData])
-        
-        if (error) throw error
+      const url = '/api/drivers'
+      const method = editingDriver ? 'PATCH' : 'POST'
+      const body = editingDriver
+        ? { id: editingDriver.id, ...formData }
+        : formData
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || `HTTP error! status: ${response.status}`)
       }
       
       await loadDrivers()
       handleCloseDialog()
     } catch (error) {
       console.error('Error saving driver:', error)
-      alert(locale === 'fr' ? 'Erreur lors de la sauvegarde' : 'Error saving driver')
+      const errorMessage = error instanceof Error ? error.message : (locale === 'fr' ? 'Erreur lors de la sauvegarde' : 'Error saving driver')
+      alert(errorMessage)
     }
   }
 
@@ -127,33 +135,49 @@ export function DriversList({ locale }: DriversListProps) {
     }
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('drivers')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
+      const response = await fetch('/api/drivers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || `HTTP error! status: ${response.status}`)
+      }
+
       await loadDrivers()
     } catch (error) {
       console.error('Error deleting driver:', error)
-      alert(locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting driver')
+      const errorMessage = error instanceof Error ? error.message : (locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting driver')
+      alert(errorMessage)
     }
   }
 
   const toggleOnlineStatus = async (driver: Driver) => {
     try {
-      const supabase = createClient()
-      const { error } = await (supabase
-        .from('drivers') as any)
-        .update({ is_online: !driver.is_online })
-        .eq('id', driver.id)
-      
-      if (error) throw error
+      const response = await fetch('/api/drivers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: driver.id, is_online: !driver.is_online }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || `HTTP error! status: ${response.status}`)
+      }
+
       await loadDrivers()
     } catch (error) {
       console.error('Error updating driver status:', error)
-      alert(locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating driver status')
+      const errorMessage = error instanceof Error ? error.message : (locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating driver status')
+      alert(errorMessage)
     }
   }
 

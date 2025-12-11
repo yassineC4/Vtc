@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/supabase/auth-helper'
 
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier l'authentification
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const { key, value } = await request.json()
 
     if (!key || value === undefined) {

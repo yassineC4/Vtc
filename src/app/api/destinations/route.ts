@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/supabase/auth-helper'
 
 export async function GET() {
   try {
+    // GET est public (lecture seule pour l'affichage des destinations)
     const supabase = await createAdminClient()
 
     const { data, error } = await supabase
@@ -28,6 +30,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier l'authentification pour les opérations admin
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const body = await request.json()
     const { name_fr, name_en, address, icon, fixed_price, display_order, is_active } = body
 
@@ -75,6 +83,12 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Vérifier l'authentification pour les opérations admin
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const body = await request.json()
     const { id, ...updates } = body
 
@@ -121,6 +135,12 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Vérifier l'authentification pour les opérations admin
+    const authResult = await requireAuth(request)
+    if (!authResult.authenticated) {
+      return authResult.response
+    }
+
     const { id } = await request.json()
 
     if (!id) {

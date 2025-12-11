@@ -41,38 +41,52 @@ export function PlanningView({ locale }: PlanningViewProps) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const supabase = createClient()
+      // Load drivers via API
+      const driversResponse = await fetch('/api/drivers')
+      if (!driversResponse.ok) {
+        if (driversResponse.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        throw new Error(`HTTP error! status: ${driversResponse.status}`)
+      }
+      const driversResult = await driversResponse.json()
+      setDrivers(driversResult.data || [])
 
-      // Load drivers
-      const { data: driversData, error: driversError } = await supabase
-        .from('drivers')
-        .select('*')
-        .order('first_name', { ascending: true })
-
-      if (driversError) throw driversError
-      setDrivers(driversData || [])
-
-      // Load bookings for selected date
+      // Load bookings for selected date via API
       const startOfDay = new Date(selectedDate)
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(selectedDate)
       endOfDay.setHours(23, 59, 59, 999)
 
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          driver:drivers(*)
-        `)
-        .gte('scheduled_date', startOfDay.toISOString())
-        .lte('scheduled_date', endOfDay.toISOString())
-        .in('status', ['confirmed', 'in_progress'])
-        .order('scheduled_date', { ascending: true })
-
-      if (bookingsError) throw bookingsError
-      setBookings((bookingsData as BookingWithDriver[]) || [])
+      const bookingsResponse = await fetch('/api/bookings')
+      if (!bookingsResponse.ok) {
+        if (bookingsResponse.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        throw new Error(`HTTP error! status: ${bookingsResponse.status}`)
+      }
+      const bookingsResult = await bookingsResponse.json()
+      
+      // Filtrer les bookings côté client pour la date sélectionnée
+      const filteredBookings = (bookingsResult.data as BookingWithDriver[] || [])
+        .filter((booking: BookingWithDriver) => {
+          if (!booking.scheduled_date) return false
+          const bookingDate = new Date(booking.scheduled_date)
+          return bookingDate >= startOfDay && 
+                 bookingDate <= endOfDay && 
+                 (booking.status === 'confirmed' || booking.status === 'in_progress')
+        })
+        .sort((a: BookingWithDriver, b: BookingWithDriver) => {
+          if (!a.scheduled_date || !b.scheduled_date) return 0
+          return new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
+        })
+      
+      setBookings(filteredBookings)
     } catch (error) {
       console.error('Error loading data:', error)
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        alert(locale === 'fr' ? 'Vous devez être connecté pour voir le planning' : 'You must be logged in to view planning')
+      }
     } finally {
       setLoading(false)
     }

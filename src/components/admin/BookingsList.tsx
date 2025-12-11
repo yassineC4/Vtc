@@ -58,30 +58,30 @@ export function BookingsList({ locale }: BookingsListProps) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const supabase = createClient()
-      
-      // Load drivers
-      const { data: driversData, error: driversError } = await supabase
-        .from('drivers')
-        .select('*')
-        .order('first_name', { ascending: true })
-      
-      if (driversError) throw driversError
-      setDrivers(driversData || [])
+      // Load drivers via API
+      const driversResponse = await fetch('/api/drivers')
+      if (driversResponse.ok) {
+        const driversResult = await driversResponse.json()
+        setDrivers(driversResult.data || [])
+      } else {
+        console.error('Error loading drivers:', driversResponse.status)
+      }
 
-      // Load bookings
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          driver:drivers(*)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (bookingsError) throw bookingsError
-      setBookings((bookingsData as BookingWithDriver[]) || [])
+      // Load bookings via API
+      const bookingsResponse = await fetch('/api/bookings')
+      if (!bookingsResponse.ok) {
+        if (bookingsResponse.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        throw new Error(`HTTP error! status: ${bookingsResponse.status}`)
+      }
+      const bookingsResult = await bookingsResponse.json()
+      setBookings((bookingsResult.data as BookingWithDriver[]) || [])
     } catch (error) {
       console.error('Error loading data:', error)
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        alert(locale === 'fr' ? 'Vous devez être connecté pour voir les réservations' : 'You must be logged in to view bookings')
+      }
     } finally {
       setLoading(false)
     }
@@ -89,19 +89,26 @@ export function BookingsList({ locale }: BookingsListProps) {
 
   const handleAssignDriver = async (bookingId: string, driverId: string | null) => {
     try {
-      const supabase = createClient()
       const updateData: any = {
+        id: bookingId,
         driver_id: driverId,
         driver_assigned_at: driverId ? new Date().toISOString() : null,
         status: driverId ? 'confirmed' : 'pending',
       }
 
-      const { error } = await (supabase
-        .from('bookings') as any)
-        .update(updateData)
-        .eq('id', bookingId)
+      const response = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || `HTTP error! status: ${response.status}`)
+      }
 
       // Reload bookings to get updated data
       await loadData()
@@ -117,23 +124,32 @@ export function BookingsList({ locale }: BookingsListProps) {
       }
     } catch (error) {
       console.error('Error assigning driver:', error)
-      alert(locale === 'fr' ? 'Erreur lors de l\'assignation' : 'Error assigning driver')
+      const errorMessage = error instanceof Error ? error.message : (locale === 'fr' ? 'Erreur lors de l\'assignation' : 'Error assigning driver')
+      alert(errorMessage)
     }
   }
 
   const handleUpdateStatus = async (bookingId: string, status: Booking['status']) => {
     try {
-      const supabase = createClient()
-      const { error } = await (supabase
-        .from('bookings') as any)
-        .update({ status })
-        .eq('id', bookingId)
+      const response = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: bookingId, status }),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+        }
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || `HTTP error! status: ${response.status}`)
+      }
+
       await loadData()
     } catch (error) {
       console.error('Error updating status:', error)
-      alert(locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating status')
+      const errorMessage = error instanceof Error ? error.message : (locale === 'fr' ? 'Erreur lors de la mise à jour' : 'Error updating status')
+      alert(errorMessage)
     }
   }
 
