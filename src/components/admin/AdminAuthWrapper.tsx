@@ -18,7 +18,7 @@ export function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   const [configError, setConfigError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Si on est déjà sur la page de login, on arrête de vérifier et on affiche le contenu
+    // ÉVITER LA BOUCLE : Si on est déjà sur login, on arrête tout de suite
     if (pathname === '/admin/login') {
       setIsChecking(false)
       return
@@ -28,106 +28,93 @@ export function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
 
     const checkAuth = async () => {
       try {
-        // 1. Vérification "Fail-Fast" des variables d'environnement
-        // Cela évite de lancer Supabase si les clés n'existent pas
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+        // VÉRIFICATION RAPIDE (FAIL-FAST)
         if (!supabaseUrl || !supabaseKey) {
-          throw new Error("Les variables d'environnement Supabase sont manquantes dans Vercel.")
+          throw new Error("Variables d'environnement Vercel manquantes.")
         }
 
         const supabase = createClient()
         
-        // 2. Timeout de sécurité (5 secondes)
-        // Si Supabase ne répond pas, on rejette la promesse
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('TIMEOUT')), 5000)
+        // TIMEOUT : 5 secondes max pour répondre
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
         )
 
-        // 3. On utilise getUser() au lieu de getSession() pour la sécurité Admin
-        // Promise.race = le premier qui finit (Supabase ou le Timeout) gagne
-        const authResult = await Promise.race([
+        // COURSE : Supabase vs Timeout
+        const { data, error } = await Promise.race([
           supabase.auth.getUser(),
           timeoutPromise
-        ]) as { data: { user: any }, error: any }
+        ]) as any
 
         if (!isMounted) return
 
-        if (authResult.error || !authResult.data?.user) {
-          console.warn('Non authentifié ou session invalide, redirection...')
-          setIsAuthenticated(false)
-          setIsChecking(false)
-          router.replace('/admin/login') // .replace est mieux que .push ici
+        if (error || !data?.user) {
+          console.log('Pas de session, redirection...')
+          // Redirection forcée
+          router.replace('/admin/login')
           return
         }
 
-        // Tout est bon
+        // Succès
         setIsAuthenticated(true)
-        setIsChecking(false)
       
       } catch (err: any) {
         if (!isMounted) return
+        console.error('Erreur Auth:', err)
         
-        console.error('Erreur critique Auth:', err)
-        
-        // Si c'est une erreur de config, on l'affiche au lieu de tourner en rond
         if (err.message && err.message.includes('Vercel')) {
-          setConfigError(err.message)
-        } else if (err.message === 'TIMEOUT') {
-          console.error('Timeout de connexion au serveur Supabase')
-          setConfigError('La connexion au serveur prend trop de temps. Vérifiez votre réseau.')
+            setConfigError(err.message)
         } else {
-          // Pour les autres erreurs (réseau, etc.), rediriger vers login
-          console.error('Erreur d\'authentification:', err)
-          setConfigError('Erreur de connexion. Veuillez réessayer.')
+            // En cas de timeout ou autre, on renvoie au login pour ne pas bloquer
+            router.replace('/admin/login')
         }
-        
-        setIsAuthenticated(false)
-        setIsChecking(false)
-        router.replace('/admin/login')
+      } finally {
+        if (isMounted) setIsChecking(false)
       }
     }
 
     checkAuth()
 
-    // Cleanup function
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [pathname, router])
 
-  // Si on vérifie encore, afficher un loader
-  if (isChecking && pathname !== '/admin/login') {
+  // CAS 1 : Erreur Config (Affiche l'erreur en rouge)
+  if (configError) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Chargement...</p>
-          {configError && (
-            <p className="mt-4 text-sm text-destructive">{configError}</p>
-          )}
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-red-50 text-red-800">
+            <h1 className="text-xl font-bold mb-2">Erreur de Configuration</h1>
+            <p>{configError}</p>
         </div>
-      </div>
     )
   }
 
-  // Si sur login, afficher sans AdminNav
+  // CAS 2 : Page de Login (Affiche toujours le contenu)
   if (pathname === '/admin/login') {
     return <>{children}</>
   }
 
-  // Si authentifié, afficher avec AdminNav
+  // CAS 3 : Chargement (Spinner)
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
+        <p className="text-gray-500">Connexion au serveur...</p>
+      </div>
+    )
+  }
+
+  // CAS 4 : Authentifié
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gray-50">
         <AdminNav locale={defaultLocale} />
         <main className="container mx-auto px-4 py-8">{children}</main>
       </div>
     )
   }
 
-  // Par défaut, ne rien afficher (redirection en cours)
   return null
 }
-
