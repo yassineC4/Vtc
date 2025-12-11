@@ -102,6 +102,17 @@ INSERT INTO popular_destinations (name_fr, name_en, address, icon, fixed_price, 
 ('Gare Montparnasse', 'Gare Montparnasse', '75014 Paris', 'train', 35.00, 6)
 ON CONFLICT DO NOTHING;
 
+-- Insertion des 7 chauffeurs par défaut
+INSERT INTO drivers (first_name, last_name, phone, email, is_online) VALUES
+('Jean', 'Dupont', '0612345678', 'jean.dupont@vtc.com', false),
+('Marie', 'Martin', '0623456789', 'marie.martin@vtc.com', false),
+('Pierre', 'Bernard', '0634567890', 'pierre.bernard@vtc.com', false),
+('Sophie', 'Dubois', '0645678901', 'sophie.dubois@vtc.com', false),
+('Lucas', 'Moreau', '0656789012', 'lucas.moreau@vtc.com', false),
+('Emma', 'Laurent', '0667890123', 'emma.laurent@vtc.com', false),
+('Thomas', 'Simon', '0678901234', 'thomas.simon@vtc.com', false)
+ON CONFLICT DO NOTHING;
+
 -- Fonction pour mettre à jour automatiquement updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

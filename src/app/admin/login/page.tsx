@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  // Vérifier si l'utilisateur est déjà connecté (côté client uniquement)
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          router.push('/admin')
+          router.refresh()
+        }
+      } catch (err) {
+        // Si erreur (ex: variables d'environnement manquantes), on laisse l'utilisateur voir la page de login
+        console.error('Error checking session:', err)
+      } finally {
+        setCheckingSession(false)
+      }
+    }
+    checkSession()
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,6 +56,17 @@ export default function LoginPage() {
       router.push('/admin')
       router.refresh()
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>{t.common.loading}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
