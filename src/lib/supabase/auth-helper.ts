@@ -9,10 +9,30 @@ import { Database } from '@/types/database'
  */
 export async function requireAuth(request: NextRequest) {
   try {
+    // Vérifier que les variables d'environnement sont définies
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables')
+      return {
+        authenticated: false,
+        response: NextResponse.json(
+          { error: 'Server configuration error' },
+          { 
+            status: 500,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            },
+          }
+        ),
+      }
+    }
+
     // Créer un client Supabase qui lit les cookies depuis la requête
     const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           getAll() {
@@ -55,10 +75,18 @@ export async function requireAuth(request: NextRequest) {
       }
     }
 
-    // Récupérer la session pour la compatibilité avec le code existant
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    // getUser() réussit, l'utilisateur est authentifié
+    // On essaie de récupérer la session pour compatibilité (optionnel)
+    let session = null
+    try {
+      const {
+        data: { session: retrievedSession },
+      } = await supabase.auth.getSession()
+      session = retrievedSession || null
+    } catch (sessionError) {
+      // Si getSession() échoue, ce n'est pas grave, on a déjà l'utilisateur
+      console.warn('Could not retrieve session, but user is authenticated:', sessionError)
+    }
 
     return {
       authenticated: true,
