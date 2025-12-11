@@ -11,8 +11,10 @@
  * - 0033695297192
  * - 33695297192
  * - 0695297192 (assumera code pays 33)
+ * - +33 695 29 71 92
+ * - 33 6 95 29 71 92
  * 
- * Retourne : 33695297192 (format attendu par wa.me)
+ * Retourne : 33695297192 (format attendu par wa.me, sans espaces, sans +, sans 0 initial)
  */
 export function formatPhoneForWhatsApp(phoneNumber: string): string {
   if (!phoneNumber || typeof phoneNumber !== 'string') {
@@ -20,7 +22,7 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
     return DEFAULT_PHONE_NUMBER
   }
 
-  // Supprimer tous les caractères non numériques (espaces, tirets, parenthèses, +, etc.)
+  // Supprimer tous les caractères non numériques (espaces, tirets, parenthèses, +, points, etc.)
   let cleaned = phoneNumber.replace(/[^0-9]/g, '')
   
   // Si vide après nettoyage, retourner le défaut
@@ -34,6 +36,7 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
     cleaned = cleaned.substring(2)
   }
   
+  // Si le numéro commence par + (déjà enlevé, mais si on a un code pays direct)
   // Si le numéro commence par un seul 0 et fait 10 chiffres (format français : 06...)
   // Remplacer le 0 par le code pays 33
   if (cleaned.startsWith('0') && cleaned.length === 10) {
@@ -46,7 +49,14 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
     cleaned = '33' + cleaned
   }
   
-  // Vérifier que le numéro formaté est valide (doit commencer par 33 et avoir au moins 11 chiffres pour un mobile français)
+  // Si le numéro commence déjà par 33, vérifier la longueur
+  // Format attendu: 33 + 9 chiffres (mobile français) = 11 chiffres
+  if (cleaned.startsWith('33') && cleaned.length >= 11) {
+    // Extraire seulement les 11 premiers chiffres (code pays + numéro)
+    cleaned = cleaned.substring(0, 11)
+  }
+  
+  // Vérifier que le numéro formaté est valide
   if (cleaned.startsWith('33') && cleaned.length < 11) {
     console.warn('Phone number seems too short after formatting:', cleaned, 'Original:', phoneNumber)
   }

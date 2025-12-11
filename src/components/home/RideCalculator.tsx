@@ -13,7 +13,7 @@ import { useGeolocation } from '@/hooks/useGeolocation'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/utils'
 import { getTranslations, type Locale } from '@/lib/i18n'
 import { useDebounce, debounce } from '@/lib/debounce'
-import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
+import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER, formatPhoneForWhatsApp } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
 import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, TrendingUp, Car, Crown, Users, Gem } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -442,10 +442,25 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     try {
       // Construire la date/heure programmée
       let scheduledDate: string | null = null
+      let formattedDateTime = ''
       if (rideType === 'reservation' && date && time) {
         const [year, month, day] = date.split('-').map(Number)
         const [hours, minutes] = time.split(':').map(Number)
-        scheduledDate = new Date(year, month - 1, day, hours, minutes).toISOString()
+        const bookingDate = new Date(year, month - 1, day, hours, minutes)
+        scheduledDate = bookingDate.toISOString()
+        
+        // Formater la date pour le message WhatsApp
+        formattedDateTime = bookingDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }) + ' à ' + bookingDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      } else {
+        formattedDateTime = locale === 'fr' ? 'Immédiatement' : 'Immediately'
       }
 
       // Créer la réservation dans la base de données
@@ -482,12 +497,33 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       setReservationData(data)
       setIsBooking(false)
       
-      // Afficher un message de succès avec information sur le paiement
+      // Générer le message WhatsApp pour l'admin
+      const adminMessage = locale === 'fr'
+        ? `Bonjour, je viens de faire une demande de réservation sur le site.
+
+Trajet : ${departure} ➔ ${arrival}
+
+Date : ${formattedDateTime}
+
+Client : ${data.firstName} ${data.lastName}`
+        : `Hello, I just made a reservation request on the website.
+
+Route: ${departure} ➔ ${arrival}
+
+Date: ${formattedDateTime}
+
+Client: ${data.firstName} ${data.lastName}`
+      
+      // Ouvrir WhatsApp vers le numéro admin
+      const whatsappUrl = createWhatsAppUrl(whatsappNumber || DEFAULT_PHONE_NUMBER, adminMessage)
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+      
+      // Afficher une modale de succès
       const successMessage = locale === 'fr'
-        ? `✅ Votre demande est bien reçue ! 📩\n\nProchaine étape : Vous allez recevoir un lien de paiement sur votre mobile d'ici quelques minutes.\n\nVotre chauffeur sera confirmé automatiquement dès réception du règlement.`
+        ? `✅ Demande enregistrée ! Veuillez envoyer le message WhatsApp qui vient de s'ouvrir pour finaliser la demande.`
         : locale === 'ar'
-        ? `✅ تم استلام طلبك بنجاح! 📩\n\nالخطوة التالية: سوف تتلقى رابط دفع على هاتفك المحمول خلال دقائق قليلة.\n\nسيتم تأكيد سائقك تلقائياً بمجرد استلام الدفع.`
-        : `✅ Your request has been received! 📩\n\nNext step: You will receive a payment link on your mobile within a few minutes.\n\nYour driver will be confirmed automatically upon receipt of payment.`
+        ? `✅ تم تسجيل الطلب! يرجى إرسال رسالة واتساب التي تم فتحها للتو لإنهاء الطلب.`
+        : `✅ Request saved! Please send the WhatsApp message that just opened to finalize your request.`
       
       alert(successMessage)
     } catch (error) {

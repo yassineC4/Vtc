@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { PendingBookingsList } from './PendingBookingsList'
 import { DriverTimelineGantt } from './DriverTimelineGantt'
 import { getTranslations, type Locale } from '@/lib/i18n'
@@ -18,6 +19,7 @@ interface DispatchDashboardProps {
 }
 
 export function DispatchDashboard({ locale }: DispatchDashboardProps) {
+  const router = useRouter()
   const [pendingBookings, setPendingBookings] = useState<Booking[]>([])
   const [confirmedBookings, setConfirmedBookings] = useState<BookingWithDriver[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
@@ -34,22 +36,30 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
   const loadData = async () => {
     setLoading(true)
     try {
-      // Load drivers
-      const driversResponse = await fetch('/api/drivers')
+      // Load drivers - avec credentials pour inclure les cookies de session
+      const driversResponse = await fetch('/api/drivers', {
+        credentials: 'include',
+      })
       if (!driversResponse.ok) {
         if (driversResponse.status === 401) {
-          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+          // Rediriger vers login si non authentifié
+          router.push('/admin/login')
+          return
         }
         throw new Error(`HTTP error! status: ${driversResponse.status}`)
       }
       const driversResult = await driversResponse.json()
       setDrivers(driversResult.data || [])
 
-      // Load bookings
-      const bookingsResponse = await fetch('/api/bookings')
+      // Load bookings - avec credentials pour inclure les cookies de session
+      const bookingsResponse = await fetch('/api/bookings', {
+        credentials: 'include',
+      })
       if (!bookingsResponse.ok) {
         if (bookingsResponse.status === 401) {
-          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+          // Rediriger vers login si non authentifié
+          router.push('/admin/login')
+          return
         }
         throw new Error(`HTTP error! status: ${bookingsResponse.status}`)
       }
@@ -78,9 +88,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       setConfirmedBookings(confirmed)
     } catch (error) {
       console.error('Error loading data:', error)
-      if (error instanceof Error && error.message.includes('Unauthorized')) {
-        alert(locale === 'fr' ? 'Vous devez être connecté' : 'You must be logged in')
-      }
+      // Ne pas afficher d'alerte, la redirection est déjà gérée
     } finally {
       setLoading(false)
     }
@@ -96,10 +104,15 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       const response = await fetch('/api/drivers', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id: driverId, is_online: isOnline }),
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/admin/login')
+          return
+        }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 

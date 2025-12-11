@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Clock, MapPin, CheckCircle2, XCircle } from 'lucide-react'
 import { Database } from '@/types/database'
 import { type Locale } from '@/lib/i18n'
+import { createWhatsAppUrl, formatPhoneForWhatsApp } from '@/lib/whatsapp'
 
 type Booking = Database['public']['Tables']['bookings']['Row']
 type Driver = Database['public']['Tables']['drivers']['Row']
@@ -91,6 +92,7 @@ export function AssignDriverModal({
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           id: booking.id,
           driver_id: selectedDriverId,
@@ -101,16 +103,36 @@ export function AssignDriverModal({
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
+          // Rediriger vers login si non authentifié
+          window.location.href = '/admin/login'
+          return
         }
         const result = await response.json().catch(() => ({}))
         throw new Error(result.error || `HTTP error! status: ${response.status}`)
       }
 
-      // TODO: Envoyer un email au client avec le nom du chauffeur
       const selectedDriver = drivers.find(d => d.id === selectedDriverId)
-      if (selectedDriver && booking.email) {
-        console.log(`Should send email to ${booking.email} with driver ${selectedDriver.first_name} ${selectedDriver.last_name}`)
+      
+      // Ouvrir WhatsApp vers le client avec message de confirmation
+      if (selectedDriver && booking.phone) {
+        const clientMessage = locale === 'fr'
+          ? `Bonjour ${booking.first_name}, votre course est confirmée ✅.
+
+Votre chauffeur sera : ${selectedDriver.first_name} ${selectedDriver.last_name}.
+
+Il vous contactera à son arrivée.
+
+Merci de votre confiance !`
+          : `Hello ${booking.first_name}, your ride is confirmed ✅.
+
+Your driver will be: ${selectedDriver.first_name} ${selectedDriver.last_name}.
+
+He will contact you upon arrival.
+
+Thank you for your trust!`
+        
+        const whatsappUrl = createWhatsAppUrl(booking.phone, clientMessage)
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
       }
 
       onAssigned()
@@ -252,8 +274,8 @@ export function AssignDriverModal({
           </Button>
           <Button onClick={handleAssign} disabled={!selectedDriverId || assigning}>
             {assigning
-              ? locale === 'fr' ? 'Attribution...' : 'Assigning...'
-              : locale === 'fr' ? 'Confirmer' : 'Confirm'}
+              ? locale === 'fr' ? 'Confirmation...' : 'Confirming...'
+              : locale === 'fr' ? 'Confirmer & WhatsApp Client' : 'Confirm & WhatsApp Client'}
           </Button>
         </div>
       </DialogContent>
