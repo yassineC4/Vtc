@@ -20,22 +20,70 @@ export default function LoginPage() {
 
   // Vérifier si l'utilisateur est déjà connecté (côté client uniquement)
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    let isMounted = true
+
     const checkSession = async () => {
       try {
+        // Timeout de 3 secondes pour éviter que ça reste bloqué
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.warn('Session check timeout, showing login form')
+            setCheckingSession(false)
+          }
+        }, 3000)
+
+        // Vérifier d'abord si les variables d'environnement sont disponibles
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          console.warn('Supabase environment variables not found, showing login form')
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+          if (isMounted) {
+            setCheckingSession(false)
+          }
+          return
+        }
+
         const supabase = createClient()
         const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+
+        if (!isMounted) return
+
         if (session && !error) {
           router.push('/admin')
           router.refresh()
+        } else {
+          setCheckingSession(false)
         }
       } catch (err) {
         // Si erreur (ex: variables d'environnement manquantes), on laisse l'utilisateur voir la page de login
         console.error('Error checking session:', err)
-      } finally {
-        setCheckingSession(false)
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+        if (isMounted) {
+          setCheckingSession(false)
+        }
       }
     }
+
     checkSession()
+
+    // Cleanup
+    return () => {
+      isMounted = false
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
   }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
