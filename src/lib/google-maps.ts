@@ -151,7 +151,7 @@ export function initAutocomplete(
   try {
     const autocomplete = new window.google.maps.places.Autocomplete(input, {
       types: ['address'],
-      componentRestrictions: { country: ['fr', 'be', 'ch'] }, // France, Belgique, Suisse
+      componentRestrictions: { country: ['fr', 'it', 'es', 'ch'] }, // France, Italie, Espagne, Suisse
     })
 
     autocomplete.addListener('place_changed', () => {

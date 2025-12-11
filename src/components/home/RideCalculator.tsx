@@ -42,14 +42,27 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [rideType, setRideType] = useState<RideType>('immediate')
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory>('standard')
   const [isRoundTrip, setIsRoundTrip] = useState(false)
-  const [departure, setDeparture] = useState('')
-  const [arrival, setArrival] = useState('')
+  // Initialiser depuis localStorage si disponible
+  const [departure, setDeparture] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vtc_departure') || ''
+    }
+    return ''
+  })
+  const [arrival, setArrival] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vtc_arrival') || ''
+    }
+    return ''
+  })
   const [date, setDate] = useState(() => {
     // Initialiser avec la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
   const [time, setTime] = useState('')
+  const [dateTimeError, setDateTimeError] = useState<string | null>(null)
+  const [isBooking, setIsBooking] = useState(false)
   const [calculation, setCalculation] = useState<{
     distance: number
     duration: number
@@ -64,8 +77,18 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     loading: boolean
   }>>([])
   const [calculatingPrices, setCalculatingPrices] = useState(false)
-  const [departureInput, setDepartureInput] = useState('')
-  const [arrivalInput, setArrivalInput] = useState('')
+  const [departureInput, setDepartureInput] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vtc_departure') || ''
+    }
+    return ''
+  })
+  const [arrivalInput, setArrivalInput] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vtc_arrival') || ''
+    }
+    return ''
+  })
   const [showReservationForm, setShowReservationForm] = useState(false)
   const [reservationData, setReservationData] = useState<ReservationData | null>(null)
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -116,6 +139,48 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       setArrivalInput(arrival)
     }
   }, [arrival])
+
+  // Sauvegarder dans localStorage quand départ/arrivée changent
+  useEffect(() => {
+    if (typeof window !== 'undefined' && departure) {
+      localStorage.setItem('vtc_departure', departure)
+    }
+  }, [departure])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && arrival) {
+      localStorage.setItem('vtc_arrival', arrival)
+    }
+  }, [arrival])
+
+  // Validation de la date/heure pour les réservations
+  const validateDateTime = (selectedDate: string, selectedTime: string): string | null => {
+    if (rideType !== 'reservation' || !selectedDate || !selectedTime) {
+      return null
+    }
+
+    const now = new Date()
+    const [year, month, day] = selectedDate.split('-').map(Number)
+    const [hours, minutes] = selectedTime.split(':').map(Number)
+    
+    const selectedDateTime = new Date(year, month - 1, day, hours, minutes)
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000) // +1 heure
+
+    if (selectedDateTime < oneHourLater) {
+      const phoneNumber = whatsappNumber || DEFAULT_PHONE_NUMBER
+      const formattedPhone = phoneNumber.startsWith('33') 
+        ? `+${phoneNumber.slice(0, 2)} ${phoneNumber.slice(2, 4)} ${phoneNumber.slice(4, 6)} ${phoneNumber.slice(6, 8)} ${phoneNumber.slice(8, 10)}`
+        : phoneNumber
+      
+      return locale === 'fr'
+        ? `Pour les départs immédiats, veuillez nous appeler directement au ${formattedPhone}.`
+        : locale === 'ar'
+        ? `للرحلات الفورية، يرجى الاتصال بنا مباشرة على ${formattedPhone}.`
+        : `For immediate departures, please call us directly at ${formattedPhone}.`
+    }
+
+    return null
+  }
 
   const { inputRef: departureRef, isLoaded: isMapsLoaded } = useGoogleMapsAutocomplete(handleDepartureSelect)
   const { inputRef: arrivalRef } = useGoogleMapsAutocomplete(handleArrivalSelect)
@@ -280,14 +345,37 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 
   const handleBook = () => {
     if (!calculation || !departure || !arrival) return
+    
+    // Valider la date/heure si c'est une réservation
+    if (rideType === 'reservation' && date && time) {
+      const error = validateDateTime(date, time)
+      if (error) {
+        setDateTimeError(error)
+        return
+      }
+    }
+    
+    setDateTimeError(null)
     // Ouvrir le formulaire de réservation
+    setIsBooking(true)
     setShowReservationForm(true)
   }
 
   const handleReservationConfirm = (data: ReservationData) => {
     if (!calculation || !departure || !arrival) return
 
+    // Valider à nouveau la date/heure avant confirmation
+    if (rideType === 'reservation' && date && time) {
+      const error = validateDateTime(date, time)
+      if (error) {
+        setDateTimeError(error)
+        return
+      }
+    }
+
     setReservationData(data)
+    setIsBooking(false)
+    setDateTimeError(null)
     
     let message: string
 
@@ -628,55 +716,75 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 
           {/* Champs date/heure uniquement pour les réservations */}
           {rideType === 'reservation' && (
-            <div className="grid gap-6 md:grid-cols-2 animate-fade-in">
-              <div className="space-y-3">
-                <Label htmlFor="date" className="text-base">
-                  {t.home.date}
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="pl-12"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
+            <div className="space-y-4 animate-fade-in">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-3">
+                  <Label htmlFor="date" className="text-base">
+                    {t.home.date}
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => {
+                        setDate(e.target.value)
+                        setDateTimeError(null)
+                      }}
+                      className="pl-12"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="time" className="text-base">
-                  {t.home.time}
-                </Label>
-                <div className="relative">
-                  <Clock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    id="time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="pl-12"
-                  />
+                <div className="space-y-3">
+                  <Label htmlFor="time" className="text-base">
+                    {t.home.time}
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="time"
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        setTime(e.target.value)
+                        if (date) {
+                          const error = validateDateTime(date, e.target.value)
+                          setDateTimeError(error)
+                        }
+                      }}
+                      className="pl-12"
+                    />
+                  </div>
                 </div>
               </div>
+              
+              {dateTimeError && (
+                <div className="p-4 text-sm text-red-600 bg-red-50 border-2 border-red-200 rounded-xl animate-fade-in">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="font-medium">{dateTimeError}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           <Button
             onClick={handleCalculate}
-            disabled={loading || !departure || !arrival}
-            className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+            disabled={loading || !departure || !arrival || (rideType === 'reservation' && !!dateTimeError)}
+            className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {t.common.loading}
               </span>
             ) : (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
                 {t.home.estimatePrice}
               </span>
@@ -807,7 +915,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
           {calculation && (
             <div 
               id="calculation-result"
-              className="mt-8 p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100 space-y-6 animate-scale-in shadow-xl hover:shadow-2xl transition-all duration-500"
+              className="mt-8 p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100 space-y-6 shadow-xl hover:shadow-2xl transition-all duration-500 animate-fade-in"
             >
               <div className="grid grid-cols-2 gap-6 pb-6 border-b border-gray-200">
                 <div>
@@ -837,7 +945,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
                     {showSuccess && (
                       <CheckCircle2 className="w-6 h-6 text-green-500 animate-scale-in" />
                     )}
-                    <span className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent animate-fade-in">
+                    <span className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent animate-fade-in" style={{ animationDelay: '0.2s' }}>
                       {formatPrice(calculation.price, locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US')}
                     </span>
                   </div>
@@ -854,14 +962,24 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
               
               <Button 
                 onClick={handleBook} 
-                className="w-full h-14 text-base mt-6 relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl animate-pulse-glow"
+                disabled={isBooking || (rideType === 'reservation' && !!dateTimeError)}
+                className="w-full h-14 text-base mt-6 relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl animate-pulse-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 size="lg"
               >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {t.home.bookRide}
-                  <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                </span>
-                <span className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                {isBooking ? (
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {locale === 'fr' ? 'Réservation...' : locale === 'ar' ? 'جارٍ الحجز...' : 'Booking...'}
+                  </span>
+                ) : (
+                  <>
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {t.home.bookRide}
+                      <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                    </span>
+                    <span className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                  </>
+                )}
               </Button>
             </div>
           )}
@@ -892,7 +1010,10 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       {/* Formulaire de réservation */}
       <ReservationForm
         open={showReservationForm}
-        onClose={() => setShowReservationForm(false)}
+        onClose={() => {
+          setShowReservationForm(false)
+          setIsBooking(false)
+        }}
         onConfirm={handleReservationConfirm}
       />
     </div>
