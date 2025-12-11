@@ -10,82 +10,34 @@ import { createClient } from '@/lib/supabase/client'
 import { getTranslations, defaultLocale } from '@/lib/i18n'
 
 export default function LoginPage() {
-  const t = getTranslations(defaultLocale)
+  // Initialisation sécurisée des traductions (valeurs par défaut si échec)
+  const t = tryGetTranslations()
   const router = useRouter()
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [checkingSession, setCheckingSession] = useState(true)
+  
+  // Suppression de l'état bloquant "checkingSession" au démarrage
+  // On affiche le formulaire DIRECTEMENT.
 
-  // Vérifier si l'utilisateur est déjà connecté (côté client uniquement)
+  // Vérification silencieuse en arrière-plan
   useEffect(() => {
-    let isMounted = true
-
-    const checkSession = async () => {
+    const checkAutoLogin = async () => {
       try {
-        // 1. Vérification Préliminaire (Fail Fast)
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-          console.error('Configuration Supabase manquante')
-          if (isMounted) {
-            setCheckingSession(false)
-            setError('Configuration Supabase manquante. Veuillez contacter l\'administrateur.')
-          }
-          return
-        }
-
         const supabase = createClient()
-
-        // 2. Implémentation du Timeout avec Promise.race (5000ms)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error('TIMEOUT'))
-          }, 5000)
-        })
-
-        const sessionPromise = supabase.auth.getSession()
-
-        const sessionResult = await Promise.race([
-          sessionPromise,
-          timeoutPromise,
-        ])
-
-        if (!isMounted) return
-
-        const { data: { session }, error: sessionError } = sessionResult as { 
-          data: { session: any }, 
-          error: any 
-        }
-
-        if (session && !sessionError) {
-          router.push('/admin')
-          router.refresh()
-        } else {
-          setCheckingSession(false)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session) {
+          console.log('Session active détectée, redirection...')
+          router.replace('/admin') // .replace est plus propre ici
         }
       } catch (err) {
-        // 3. Gestion des Erreurs
-        if (!isMounted) return
-
-        if (err instanceof Error && err.message === 'TIMEOUT') {
-          console.error('Session check timeout')
-          setError('La connexion au serveur prend trop de temps. Vérifiez votre réseau.')
-        } else {
-          console.error('Error checking session:', err)
-          setError('Erreur lors de la vérification de session. Veuillez réessayer.')
-        }
-        
-        // Force setIsLoading(false) pour débloquer l'interface
-        setCheckingSession(false)
+        console.warn('Erreur vérification session (non bloquant):', err)
       }
     }
-
-    checkSession()
-
-    // Cleanup
-    return () => {
-      isMounted = false
-    }
+    checkAutoLogin()
   }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -93,38 +45,50 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (signInError) {
-      setError(signInError.message)
+      if (signInError) {
+        console.error('Erreur login:', signInError)
+        setError("Email ou mot de passe incorrect.") // Message générique plus sûr
+        setLoading(false)
+      } else {
+        // Succès : Force un rechargement complet pour mettre à jour les cookies/middleware
+        router.refresh() 
+        router.push('/admin')
+      }
+    } catch (err) {
+      console.error('Erreur critique login:', err)
+      setError("Erreur de connexion système. Vérifiez les logs.")
       setLoading(false)
-    } else {
-      router.push('/admin')
-      router.refresh()
     }
   }
 
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>{t.common.loading}</p>
-        </div>
-      </div>
-    )
+  // Fonction utilitaire pour éviter le crash si i18n échoue
+  function tryGetTranslations() {
+    try {
+      return getTranslations(defaultLocale)
+    } catch (e) {
+      return {
+        common: { loading: 'Chargement...' },
+        auth: { login: 'Connexion', pleaseLogin: 'Connectez-vous', email: 'Email', password: 'Mot de passe' }
+      }
+    }
   }
 
+  // Rendu immédiat du formulaire (Plus de "if checkingSession return spinner")
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{t.auth.login}</CardTitle>
-          <CardDescription>{t.auth.pleaseLogin}</CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">{t.auth.login}</CardTitle>
+          <CardDescription className="text-center text-gray-500">
+            {t.auth.pleaseLogin}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -133,9 +97,11 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
+                placeholder="nom@exemple.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="block w-full"
               />
             </div>
             <div className="space-y-2">
@@ -146,15 +112,29 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="block w-full"
               />
             </div>
+            
             {error && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                {error}
+              <div className="p-3 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md animate-pulse">
+                ⚠️ {error}
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? t.common.loading : t.auth.login}
+
+            <Button 
+              type="submit" 
+              className="w-full bg-black hover:bg-gray-800 text-white" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  Connexion...
+                </>
+              ) : (
+                t.auth.login
+              )}
             </Button>
           </form>
         </CardContent>
@@ -162,4 +142,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
