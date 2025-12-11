@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { getTranslations, type Locale } from '@/lib/i18n'
-import { Settings, MessageSquare, LogOut, MapPin } from 'lucide-react'
+import { Settings, MessageSquare, LogOut, MapPin, Users, Calendar, Car } from 'lucide-react'
 
 interface AdminNavProps {
   locale: Locale
@@ -54,6 +54,33 @@ export function AdminNav({ locale }: AdminNavProps) {
             >
               <MapPin className="h-4 w-4" />
               {t.admin.destinations}
+            </Link>
+            <Link
+              href="/admin/drivers"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+                pathname === '/admin/drivers' ? 'bg-primary text-primary-foreground' : ''
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              {locale === 'fr' ? 'Chauffeurs' : 'Drivers'}
+            </Link>
+            <Link
+              href="/admin/bookings"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+                pathname === '/admin/bookings' ? 'bg-primary text-primary-foreground' : ''
+              }`}
+            >
+              <Car className="h-4 w-4" />
+              {locale === 'fr' ? 'Réservations' : 'Bookings'}
+            </Link>
+            <Link
+              href="/admin/planning"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+                pathname === '/admin/planning' ? 'bg-primary text-primary-foreground' : ''
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
+              {locale === 'fr' ? 'Planning' : 'Planning'}
             </Link>
           </div>
           <Button variant="outline" onClick={handleLogout}>

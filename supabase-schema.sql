@@ -37,11 +37,55 @@ CREATE TABLE IF NOT EXISTS popular_destinations (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Table des chauffeurs
+CREATE TABLE IF NOT EXISTS drivers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  is_online BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table des réservations (bookings)
+CREATE TABLE IF NOT EXISTS bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  departure_address TEXT NOT NULL,
+  arrival_address TEXT NOT NULL,
+  scheduled_date TIMESTAMP WITH TIME ZONE,
+  ride_type TEXT NOT NULL CHECK (ride_type IN ('immediate', 'reservation')),
+  vehicle_category TEXT NOT NULL CHECK (vehicle_category IN ('standard', 'berline', 'van')),
+  is_round_trip BOOLEAN DEFAULT false,
+  number_of_passengers INTEGER NOT NULL DEFAULT 1,
+  baby_seat BOOLEAN DEFAULT false,
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('cash', 'card')),
+  estimated_price NUMERIC NOT NULL,
+  estimated_distance NUMERIC,
+  estimated_duration INTEGER, -- en minutes
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled')),
+  driver_id UUID REFERENCES drivers(id) ON DELETE SET NULL,
+  driver_assigned_at TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_popular_destinations_active ON popular_destinations(is_active);
 CREATE INDEX IF NOT EXISTS idx_popular_destinations_order ON popular_destinations(display_order);
+CREATE INDEX IF NOT EXISTS idx_drivers_online ON drivers(is_online);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+CREATE INDEX IF NOT EXISTS idx_bookings_driver_id ON bookings(driver_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_scheduled_date ON bookings(scheduled_date);
+CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at DESC);
 
 -- Insertion de la valeur par défaut pour price_per_km
 INSERT INTO settings (key, value) 
@@ -88,6 +132,18 @@ CREATE TRIGGER update_popular_destinations_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_drivers_updated_at ON drivers;
+CREATE TRIGGER update_drivers_updated_at
+  BEFORE UPDATE ON drivers
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+CREATE TRIGGER update_bookings_updated_at
+  BEFORE UPDATE ON bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================
 -- POLITIQUES RLS (Row Level Security)
 -- ============================================
@@ -96,12 +152,15 @@ CREATE TRIGGER update_popular_destinations_updated_at
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE popular_destinations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
 -- Supprimer les politiques si elles existent déjà (pour éviter les erreurs)
 DROP POLICY IF EXISTS "Settings are viewable by everyone" ON settings;
 DROP POLICY IF EXISTS "Approved reviews are viewable by everyone" ON reviews;
 DROP POLICY IF EXISTS "Anyone can create a review" ON reviews;
 DROP POLICY IF EXISTS "Active destinations are viewable by everyone" ON popular_destinations;
+DROP POLICY IF EXISTS "Anyone can create a booking" ON bookings;
 
 -- Politique pour settings : Lecture publique, écriture admin uniquement
 CREATE POLICY "Settings are viewable by everyone"
@@ -121,6 +180,11 @@ CREATE POLICY "Anyone can create a review"
 CREATE POLICY "Active destinations are viewable by everyone"
   ON popular_destinations FOR SELECT
   USING (is_active = true);
+
+-- Politique pour bookings : Création publique, lecture/modification admin uniquement (via service role)
+CREATE POLICY "Anyone can create a booking"
+  ON bookings FOR INSERT
+  WITH CHECK (true);
 
 -- Note: Pour les opérations UPDATE/DELETE sur reviews et settings,
 -- vous devrez créer des politiques spécifiques basées sur l'authentification

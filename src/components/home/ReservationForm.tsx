@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLocale } from '@/contexts/LocaleContext'
 import { getTranslations } from '@/lib/i18n'
-import { User, Users, Baby, X, Check, CreditCard, Banknote } from 'lucide-react'
+import { User, Users, Baby, X, Check, CreditCard, Banknote, Mail, Phone, Info } from 'lucide-react'
 
 interface ReservationFormProps {
   open: boolean
@@ -18,6 +18,8 @@ interface ReservationFormProps {
 export interface ReservationData {
   firstName: string
   lastName: string
+  email?: string
+  phone?: string
   numberOfPassengers: number
   babySeat: boolean
   paymentMethod: 'cash' | 'card'
@@ -28,6 +30,8 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
   const t = getTranslations(locale)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [numberOfPassengers, setNumberOfPassengers] = useState(1)
   const [babySeat, setBabySeat] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash')
@@ -71,6 +75,8 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
       onConfirm({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
         numberOfPassengers,
         babySeat,
         paymentMethod,
@@ -78,6 +84,8 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
       // Réinitialiser le formulaire
       setFirstName('')
       setLastName('')
+      setEmail('')
+      setPhone('')
       setNumberOfPassengers(1)
       setBabySeat(false)
       setPaymentMethod('cash')
@@ -157,6 +165,36 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
                 {errors.lastName}
               </p>
             )}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-base font-semibold flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              {locale === 'fr' ? 'Email' : locale === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={locale === 'fr' ? 'votre@email.com' : locale === 'ar' ? 'بريدك@الإلكتروني.com' : 'your@email.com'}
+            />
+          </div>
+
+          {/* Téléphone */}
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-base font-semibold flex items-center gap-2">
+              <Phone className="w-5 h-5 text-primary" />
+              {locale === 'fr' ? 'Téléphone' : locale === 'ar' ? 'الهاتف' : 'Phone'}
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={locale === 'fr' ? '06 12 34 56 78' : locale === 'ar' ? '06 12 34 56 78' : '06 12 34 56 78'}
+            />
           </div>
 
           {/* Nombre de passagers */}
@@ -315,8 +353,27 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
             </div>
           </div>
 
-            {/* Boutons d'action */}
-            <div className="flex gap-3 pt-4 border-t border-gray-200 mt-6">
+          {/* Alert Box - Information sur l'acompte */}
+          <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-xl space-y-2">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  {locale === 'fr' ? 'Sécurisation de votre trajet' : locale === 'ar' ? 'تأمين رحلتك' : 'Secure your trip'}
+                </p>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  {locale === 'fr'
+                    ? 'Afin de garantir la disponibilité de votre chauffeur, un lien de paiement sécurisé (acompte ou totalité) vous sera envoyé par SMS/WhatsApp après validation de ce formulaire. La réservation ne sera définitive qu\'après ce règlement.'
+                    : locale === 'ar'
+                    ? 'لضمان توفر سائقك، سيتم إرسال رابط دفع آمن (عربون أو المبلغ الكامل) إليك عبر الرسائل القصيرة/واتساب بعد التحقق من هذا النموذج. لن يكون الحجز نهائياً إلا بعد هذا الدفع.'
+                    : 'To guarantee your driver\'s availability, a secure payment link (deposit or full amount) will be sent to you by SMS/WhatsApp after validation of this form. The reservation will only be confirmed after this payment.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Boutons d'action */}
+          <div className="flex gap-3 pt-4 border-t border-gray-200 mt-6">
               <Button
                 type="button"
                 variant="outline"

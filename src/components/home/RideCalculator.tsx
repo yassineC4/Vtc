@@ -63,6 +63,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [time, setTime] = useState('')
   const [dateTimeError, setDateTimeError] = useState<string | null>(null)
   const [isBooking, setIsBooking] = useState(false)
+  const [isImmediateAvailable, setIsImmediateAvailable] = useState(true)
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [calculation, setCalculation] = useState<{
     distance: number
     duration: number
@@ -152,6 +154,64 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       localStorage.setItem('vtc_arrival', arrival)
     }
   }, [arrival])
+
+  // Vérifier la disponibilité des chauffeurs pour les courses immédiates
+  useEffect(() => {
+    const checkAvailability = async () => {
+      setCheckingAvailability(true)
+      try {
+        const supabase = createClient()
+        
+        // Charger les chauffeurs en ligne
+        const { data: onlineDrivers, error: driversError } = await supabase
+          .from('drivers')
+          .select('id')
+          .eq('is_online', true)
+
+        if (driversError) throw driversError
+
+        if (!onlineDrivers || onlineDrivers.length === 0) {
+          setIsImmediateAvailable(false)
+          setCheckingAvailability(false)
+          return
+        }
+
+        // Vérifier si un chauffeur en ligne a une course en cours
+        const now = new Date()
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+
+        const { data: activeBookings, error: bookingsError } = await (supabase
+          .from('bookings') as any)
+          .select('driver_id')
+          .in('driver_id', onlineDrivers.map(d => d.id))
+          .in('status', ['confirmed', 'in_progress'])
+          .gte('scheduled_date', oneHourAgo.toISOString())
+          .lte('scheduled_date', oneHourLater.toISOString())
+
+        if (bookingsError) throw bookingsError
+
+        // Si tous les chauffeurs en ligne ont des courses, pas disponible
+        const availableDriverIds = onlineDrivers
+          .map(d => d.id)
+          .filter(id => !activeBookings?.some(b => b.driver_id === id))
+
+        setIsImmediateAvailable(availableDriverIds.length > 0)
+      } catch (error) {
+        console.error('Error checking availability:', error)
+        // En cas d'erreur, on assume que c'est disponible pour ne pas bloquer l'utilisateur
+        setIsImmediateAvailable(true)
+      } finally {
+        setCheckingAvailability(false)
+      }
+    }
+
+    // Vérifier au chargement et toutes les 30 secondes
+    checkAvailability()
+    const interval = setInterval(checkAvailability, 30000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Validation de la date/heure pour les réservations
   const validateDateTime = (selectedDate: string, selectedTime: string): string | null => {
@@ -361,7 +421,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     setShowReservationForm(true)
   }
 
-  const handleReservationConfirm = (data: ReservationData) => {
+  const handleReservationConfirm = async (data: ReservationData) => {
     if (!calculation || !departure || !arrival) return
 
     // Valider à nouveau la date/heure avant confirmation
@@ -373,63 +433,70 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       }
     }
 
-    setReservationData(data)
-    setIsBooking(false)
+    setIsBooking(true)
     setDateTimeError(null)
-    
-    let message: string
 
-    const vehicleCategoryName = locale === 'fr'
-      ? vehicleCategory === 'standard' ? 'Standard' : vehicleCategory === 'berline' ? 'Berline' : 'Van'
-      : locale === 'ar'
-      ? vehicleCategory === 'standard' ? 'ستاندرد' : vehicleCategory === 'berline' ? 'برلين' : 'فان'
-      : vehicleCategory.charAt(0).toUpperCase() + vehicleCategory.slice(1)
+    try {
+      // Construire la date/heure programmée
+      let scheduledDate: string | null = null
+      if (rideType === 'reservation' && date && time) {
+        const [year, month, day] = date.split('-').map(Number)
+        const [hours, minutes] = time.split(':').map(Number)
+        scheduledDate = new Date(year, month - 1, day, hours, minutes).toISOString()
+      }
 
-    // Construire le message avec les informations du formulaire
-    const passengerInfo = locale === 'fr'
-      ? `\n👤 Passager: ${data.firstName} ${data.lastName}\n👥 Nombre de passagers: ${data.numberOfPassengers}`
-      : locale === 'ar'
-      ? `\n👤 الراكب: ${data.firstName} ${data.lastName}\n👥 عدد الركاب: ${data.numberOfPassengers}`
-      : `\n👤 Passenger: ${data.firstName} ${data.lastName}\n👥 Number of passengers: ${data.numberOfPassengers}`
+      // Créer la réservation dans la base de données
+      const bookingData = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email || null,
+        phone: data.phone || null,
+        departure_address: departure,
+        arrival_address: arrival,
+        scheduled_date: scheduledDate,
+        ride_type: rideType,
+        vehicle_category: vehicleCategory,
+        is_round_trip: isRoundTrip,
+        number_of_passengers: data.numberOfPassengers,
+        baby_seat: data.babySeat,
+        payment_method: data.paymentMethod,
+        estimated_price: calculation.price,
+        estimated_distance: calculation.distance,
+        estimated_duration: calculation.duration,
+        status: 'pending' as const,
+      }
 
-    const babySeatInfo = data.babySeat
-      ? (locale === 'fr' ? '\n👶 Siège bébé: Oui' : locale === 'ar' ? '\n👶 مقعد الطفل: نعم' : '\n👶 Baby seat: Yes')
-      : ''
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData),
+      })
 
-    const paymentMethodText = data.paymentMethod === 'cash'
-      ? (locale === 'fr' ? 'Espèces' : locale === 'ar' ? 'نقداً' : 'Cash')
-      : (locale === 'fr' ? 'Carte' : locale === 'ar' ? 'بطاقة' : 'Card')
-    
-    const paymentInfo = locale === 'fr'
-      ? `\n💳 Moyen de paiement: ${paymentMethodText}`
-      : locale === 'ar'
-      ? `\n💳 طريقة الدفع: ${paymentMethodText}`
-      : `\n💳 Payment method: ${paymentMethodText}`
+      if (!response.ok) {
+        throw new Error('Failed to create booking')
+      }
 
-    const roundTripInfo = isRoundTrip
-      ? (locale === 'fr' ? '\n🔁 Type: Aller-retour' : locale === 'ar' ? '\n🔁 النوع: ذهاب وعودة' : '\n🔁 Type: Round trip')
-      : ''
-
-    if (rideType === 'immediate') {
-      // Course immédiate
-      message = locale === 'fr'
-        ? `Bonjour, je souhaite une course immédiate :\n📍 ${departure} > ${arrival}\n🚗 Catégorie : ${vehicleCategoryName}${roundTripInfo}\n💰 Prix estimé : ${formatPrice(calculation.price, 'fr-FR')}${passengerInfo}${babySeatInfo}${paymentInfo}`
+      setReservationData(data)
+      setIsBooking(false)
+      
+      // Afficher un message de succès avec information sur le paiement
+      const successMessage = locale === 'fr'
+        ? `✅ Votre demande est bien reçue ! 📩\n\nProchaine étape : Vous allez recevoir un lien de paiement sur votre mobile d'ici quelques minutes.\n\nVotre chauffeur sera confirmé automatiquement dès réception du règlement.`
         : locale === 'ar'
-        ? `مرحباً، أرغب برحلة فورية:\n📍 ${departure} > ${arrival}\n🚗 الفئة: ${vehicleCategoryName}${roundTripInfo}\n💰 السعر المقدر: ${formatPrice(calculation.price, 'ar-SA')}${passengerInfo}${babySeatInfo}${paymentInfo}`
-        : `Hello, I would like an immediate ride:\n📍 ${departure} > ${arrival}\n🚗 Category: ${vehicleCategoryName}${roundTripInfo}\n💰 Estimated price: ${formatPrice(calculation.price, 'en-US')}${passengerInfo}${babySeatInfo}${paymentInfo}`
-    } else {
-      // Réservation
-      const dateStr = date || new Date().toLocaleDateString(locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US')
-      const timeStr = time || new Date().toLocaleTimeString(locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-      message = locale === 'fr'
-        ? `Bonjour, réservation souhaitée :\n📍 ${departure} > ${arrival}\n📅 Date : ${dateStr} à ${timeStr}\n🚗 Catégorie : ${vehicleCategoryName}${roundTripInfo}\n💰 Prix estimé : ${formatPrice(calculation.price, 'fr-FR')}${passengerInfo}${babySeatInfo}${paymentInfo}`
+        ? `✅ تم استلام طلبك بنجاح! 📩\n\nالخطوة التالية: سوف تتلقى رابط دفع على هاتفك المحمول خلال دقائق قليلة.\n\nسيتم تأكيد سائقك تلقائياً بمجرد استلام الدفع.`
+        : `✅ Your request has been received! 📩\n\nNext step: You will receive a payment link on your mobile within a few minutes.\n\nYour driver will be confirmed automatically upon receipt of payment.`
+      
+      alert(successMessage)
+    } catch (error) {
+      console.error('Error creating booking:', error)
+      setIsBooking(false)
+      const errorMessage = locale === 'fr'
+        ? 'Erreur lors de la création de la réservation. Veuillez réessayer.'
         : locale === 'ar'
-        ? `مرحباً، حجز مطلوب:\n📍 ${departure} > ${arrival}\n📅 التاريخ: ${dateStr} في ${timeStr}\n🚗 الفئة: ${vehicleCategoryName}${roundTripInfo}\n💰 السعر المقدر: ${formatPrice(calculation.price, 'ar-SA')}${passengerInfo}${babySeatInfo}${paymentInfo}`
-        : `Hello, booking requested:\n📍 ${departure} > ${arrival}\n📅 Date: ${dateStr} at ${timeStr}\n🚗 Category: ${vehicleCategoryName}${roundTripInfo}\n💰 Estimated price: ${formatPrice(calculation.price, 'en-US')}${passengerInfo}${babySeatInfo}${paymentInfo}`
+        ? 'خطأ في إنشاء الحجز. يرجى المحاولة مرة أخرى.'
+        : 'Error creating booking. Please try again.'
+      alert(errorMessage)
     }
-
-    const whatsappUrl = createWhatsAppUrl(whatsappNumber, message)
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -480,17 +547,28 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
               <button
                 type="button"
                 onClick={() => setRideType('immediate')}
+                disabled={!isImmediateAvailable}
                 className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
                   rideType === 'immediate'
                     ? 'border-primary bg-primary/10 text-primary shadow-lg scale-105'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-md'
-                }`}
+                } ${!isImmediateAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!isImmediateAvailable ? (locale === 'fr' ? 'Tous nos chauffeurs sont occupés' : 'All drivers are busy') : ''}
               >
-                <Zap className={`w-5 h-5 ${rideType === 'immediate' ? 'animate-pulse' : ''}`} />
+                <Zap className={`w-5 h-5 ${rideType === 'immediate' && isImmediateAvailable ? 'animate-pulse' : ''}`} />
                 <span className="font-semibold">
                   {locale === 'fr' ? 'Course immédiate' : 'Immediate ride'}
                 </span>
               </button>
+              {!isImmediateAvailable && rideType === 'immediate' && (
+                <div className="col-span-2 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    {locale === 'fr'
+                      ? '⚠️ Tous nos chauffeurs sont occupés. Veuillez faire une réservation ou réessayer plus tard.'
+                      : '⚠️ All drivers are busy. Please make a reservation or try again later.'}
+                  </p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setRideType('reservation')}
