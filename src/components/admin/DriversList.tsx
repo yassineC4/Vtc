@@ -47,6 +47,7 @@ export function DriversList({ locale }: DriversListProps) {
     try {
       const response = await fetch('/api/drivers', {
         credentials: 'include',
+        cache: 'no-store',
       })
       if (!response.ok) {
         if (response.status === 401) {
@@ -119,6 +120,7 @@ export function DriversList({ locale }: DriversListProps) {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify(body),
       })
 
@@ -149,6 +151,7 @@ export function DriversList({ locale }: DriversListProps) {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({ id }),
       })
 
@@ -174,6 +177,7 @@ export function DriversList({ locale }: DriversListProps) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({ id: driver.id, is_online: !driver.is_online }),
       })
 

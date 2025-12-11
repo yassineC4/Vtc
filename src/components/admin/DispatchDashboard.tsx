@@ -39,6 +39,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       // Load drivers - avec credentials pour inclure les cookies de session
       const driversResponse = await fetch('/api/drivers', {
         credentials: 'include',
+        cache: 'no-store',
       })
       if (!driversResponse.ok) {
         if (driversResponse.status === 401) {
@@ -54,6 +55,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       // Load bookings - avec credentials pour inclure les cookies de session
       const bookingsResponse = await fetch('/api/bookings', {
         credentials: 'include',
+        cache: 'no-store',
       })
       if (!bookingsResponse.ok) {
         if (bookingsResponse.status === 401) {
@@ -105,6 +107,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({ id: driverId, is_online: isOnline }),
       })
 

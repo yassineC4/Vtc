@@ -93,6 +93,7 @@ export function AssignDriverModal({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({
           id: booking.id,
           driver_id: selectedDriverId,

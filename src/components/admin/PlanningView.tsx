@@ -42,7 +42,10 @@ export function PlanningView({ locale }: PlanningViewProps) {
     setLoading(true)
     try {
       // Load drivers via API
-      const driversResponse = await fetch('/api/drivers')
+      const driversResponse = await fetch('/api/drivers', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
       if (!driversResponse.ok) {
         if (driversResponse.status === 401) {
           throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
@@ -58,7 +61,10 @@ export function PlanningView({ locale }: PlanningViewProps) {
       const endOfDay = new Date(selectedDate)
       endOfDay.setHours(23, 59, 59, 999)
 
-      const bookingsResponse = await fetch('/api/bookings')
+      const bookingsResponse = await fetch('/api/bookings', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
       if (!bookingsResponse.ok) {
         if (bookingsResponse.status === 401) {
           throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')

@@ -59,7 +59,10 @@ export function BookingsList({ locale }: BookingsListProps) {
     setLoading(true)
     try {
       // Load drivers via API
-      const driversResponse = await fetch('/api/drivers')
+      const driversResponse = await fetch('/api/drivers', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
       if (driversResponse.ok) {
         const driversResult = await driversResponse.json()
         setDrivers(driversResult.data || [])
@@ -68,7 +71,10 @@ export function BookingsList({ locale }: BookingsListProps) {
       }
 
       // Load bookings via API
-      const bookingsResponse = await fetch('/api/bookings')
+      const bookingsResponse = await fetch('/api/bookings', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
       if (!bookingsResponse.ok) {
         if (bookingsResponse.status === 401) {
           throw new Error(locale === 'fr' ? 'Non authentifié' : 'Unauthorized')
@@ -99,6 +105,8 @@ export function BookingsList({ locale }: BookingsListProps) {
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify(updateData),
       })
 
@@ -134,6 +142,8 @@ export function BookingsList({ locale }: BookingsListProps) {
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({ id: bookingId, status }),
       })
 

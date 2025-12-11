@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
       return authResult.response
     }
 
+    // Utiliser createAdminClient() qui utilise SUPABASE_SERVICE_ROLE_KEY
+    // Cela bypass la RLS et permet d'accéder à toutes les données
     const supabase = await createAdminClient()
 
     const { data, error } = await (supabase as any)
@@ -18,18 +20,39 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
+      console.error('Error fetching drivers:', error)
       return NextResponse.json(
         { error: error.message },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
-    return NextResponse.json({ data }, { status: 200 })
+    // Retourner la réponse avec cache: 'no-store' pour éviter les problèmes de cache Vercel
+    return NextResponse.json(
+      { data }, 
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Content-Type': 'application/json',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error in GET /api/drivers:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
     )
   }
 }
@@ -52,18 +75,37 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('Error creating driver:', error)
       return NextResponse.json(
         { error: error.message },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json(
+      { data }, 
+      { 
+        status: 201,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error in POST /api/drivers:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
     )
   }
 }
@@ -82,7 +124,12 @@ export async function PATCH(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: 'Driver ID is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
@@ -96,18 +143,37 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('Error updating driver:', error)
       return NextResponse.json(
         { error: error.message },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
-    return NextResponse.json({ data }, { status: 200 })
+    return NextResponse.json(
+      { data }, 
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error in PATCH /api/drivers:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
     )
   }
 }
@@ -126,7 +192,12 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: 'Driver ID is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
@@ -138,18 +209,37 @@ export async function DELETE(request: NextRequest) {
       .eq('id', id)
 
     if (error) {
+      console.error('Error deleting driver:', error)
       return NextResponse.json(
         { error: error.message },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       )
     }
 
-    return NextResponse.json({ success: true }, { status: 200 })
+    return NextResponse.json(
+      { success: true }, 
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error in DELETE /api/drivers:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
     )
   }
 }
