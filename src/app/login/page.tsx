@@ -31,7 +31,7 @@ export default function LoginPage() {
         
         if (session) {
           console.log('Session active détectée, redirection...')
-          router.replace('/admin') // .replace est plus propre ici
+          router.replace('/admin/planning') // Redirection vers le planning après connexion
         }
       } catch (err) {
         console.warn('Erreur vérification session (non bloquant):', err)
@@ -59,7 +59,8 @@ export default function LoginPage() {
       } else {
         // Succès : Force un rechargement complet pour mettre à jour les cookies/middleware
         router.refresh() 
-        router.push('/admin')
+        // Une fois connecté, on va vers l'admin planning
+        router.push('/admin/planning')
       }
     } catch (err) {
       console.error('Erreur critique login:', err)
@@ -142,3 +143,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

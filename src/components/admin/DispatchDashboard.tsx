@@ -45,7 +45,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
         if (driversResponse.status === 401) {
           // Rediriger vers login si non authentifié
           setLoading(false)
-          router.push('/admin/login')
+          router.push('/login')
           return
         }
         throw new Error(`HTTP error! status: ${driversResponse.status}`)
@@ -62,7 +62,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
         if (bookingsResponse.status === 401) {
           // Rediriger vers login si non authentifié
           setLoading(false)
-          router.push('/admin/login')
+          router.push('/login')
           return
         }
         throw new Error(`HTTP error! status: ${bookingsResponse.status}`)
@@ -96,7 +96,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
       setLoading(false)
       // Si erreur 401 non gérée, rediriger vers login
       if (error instanceof Error && error.message.includes('401')) {
-        router.push('/admin/login')
+        router.push('/login')
       }
     }
   }
@@ -118,7 +118,7 @@ export function DispatchDashboard({ locale }: DispatchDashboardProps) {
 
       if (!response.ok) {
         if (response.status === 401) {
-          router.push('/admin/login')
+          router.push('/login')
           return
         }
         throw new Error(`HTTP error! status: ${response.status}`)

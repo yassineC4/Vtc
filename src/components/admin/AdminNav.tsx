@@ -20,7 +20,7 @@ export function AdminNav({ locale }: AdminNavProps) {
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    router.push('/login')
   }
 
   return (

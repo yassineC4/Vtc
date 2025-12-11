@@ -105,7 +105,7 @@ export function AssignDriverModal({
       if (!response.ok) {
         if (response.status === 401) {
           // Rediriger vers login si non authentifié
-          window.location.href = '/admin/login'
+          window.location.href = '/login'
           return
         }
         const result = await response.json().catch(() => ({}))
