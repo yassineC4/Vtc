@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Clock, Sparkles, Navigation } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
+import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
 
 export function OtherServices() {
   const { locale } = useLocale()
@@ -16,9 +17,8 @@ export function OtherServices() {
       ? 'مرحباً، أرغب بحجز سائق خاص تحت الطلب.'
       : 'Hello, I would like to book a private chauffeur on standby.'
     
-    const whatsappNumber = '0033695297192'
-    const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    const whatsappUrl = createWhatsAppUrl(DEFAULT_PHONE_NUMBER, message)
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
   }
 
   const features = [

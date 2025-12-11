@@ -93,10 +93,10 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-8">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <User className="w-6 h-6 text-primary" />
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-4 sm:p-6 md:p-8">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <User className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             {locale === 'fr'
               ? 'Informations de réservation'
               : locale === 'ar'
@@ -105,7 +105,8 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        <div className="flex-1 overflow-y-auto min-h-0 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-4">
           {/* Prénom */}
           <div className="space-y-2">
             <Label htmlFor="firstName" className="text-base font-semibold">
@@ -237,7 +238,7 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
                 onClick={() => {
                   setBabySeat(true)
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 min-h-[44px] touch-manipulation ${
                   babySeat
                     ? 'border-primary bg-primary/10 text-primary shadow-lg'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -253,7 +254,7 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
                 onClick={() => {
                   setBabySeat(false)
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 min-h-[44px] touch-manipulation ${
                   !babySeat
                     ? 'border-gray-400 bg-gray-100 text-gray-900 shadow-lg'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -278,7 +279,7 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
                 onClick={() => {
                   setPaymentMethod('cash')
                 }}
-                className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 min-h-[44px] touch-manipulation ${
                   paymentMethod === 'cash'
                     ? 'border-green-500 bg-green-50 text-green-700 shadow-lg'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -297,7 +298,7 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
                 onClick={() => {
                   setPaymentMethod('card')
                 }}
-                className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`flex-1 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 min-h-[44px] touch-manipulation ${
                   paymentMethod === 'card'
                     ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -314,24 +315,25 @@ export function ReservationForm({ open, onClose, onConfirm }: ReservationFormPro
             </div>
           </div>
 
-          {/* Boutons d'action */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1"
-            >
-              {locale === 'fr' ? 'Annuler' : locale === 'ar' ? 'إلغاء' : 'Cancel'}
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-primary hover:bg-primary/90"
-            >
-              {locale === 'fr' ? 'Confirmer la réservation' : locale === 'ar' ? 'تأكيد الحجز' : 'Confirm reservation'}
-            </Button>
-          </div>
-        </form>
+            {/* Boutons d'action */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1 min-h-[44px]"
+              >
+                {locale === 'fr' ? 'Annuler' : locale === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-primary hover:bg-primary/90 min-h-[44px]"
+              >
+                {locale === 'fr' ? 'Confirmer' : locale === 'ar' ? 'تأكيد' : 'Confirm'}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

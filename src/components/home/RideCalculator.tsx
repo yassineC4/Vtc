@@ -13,6 +13,7 @@ import { useGeolocation } from '@/hooks/useGeolocation'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/utils'
 import { getTranslations, type Locale } from '@/lib/i18n'
 import { useDebounce, debounce } from '@/lib/debounce'
+import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
 import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, TrendingUp, Car, Crown, Users, Gem } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -36,7 +37,7 @@ const VEHICLE_FIXED_PRICES: Record<VehicleCategory, number> = {
 // Majoration pour garantie de service aller-retour (10% de majoration)
 const ROUND_TRIP_PREMIUM_FEE = 0.10
 
-export function RideCalculator({ locale, whatsappNumber = '0033695297192' }: RideCalculatorProps) {
+export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }: RideCalculatorProps) {
   const t = getTranslations(locale)
   const [rideType, setRideType] = useState<RideType>('immediate')
   const [vehicleCategory, setVehicleCategory] = useState<VehicleCategory>('standard')
@@ -339,8 +340,8 @@ export function RideCalculator({ locale, whatsappNumber = '0033695297192' }: Rid
         : `Hello, booking requested:\n📍 ${departure} > ${arrival}\n📅 Date: ${dateStr} at ${timeStr}\n🚗 Category: ${vehicleCategoryName}${roundTripInfo}\n💰 Estimated price: ${formatPrice(calculation.price, 'en-US')}${passengerInfo}${babySeatInfo}${paymentInfo}`
     }
 
-    const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    const whatsappUrl = createWhatsAppUrl(whatsappNumber, message)
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -348,11 +349,11 @@ export function RideCalculator({ locale, whatsappNumber = '0033695297192' }: Rid
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 mb-4">
           <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900">
             {t.home.calculate}
           </h2>
         </div>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl mx-auto animate-fade-in px-4" style={{ animationDelay: '0.2s' }}>
           {locale === 'fr' 
             ? 'Obtenez une estimation instantanée de votre course en quelques secondes'
             : 'Get an instant estimate of your ride in seconds'}

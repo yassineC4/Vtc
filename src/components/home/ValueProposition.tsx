@@ -62,13 +62,13 @@ export function ValueProposition() {
   ]
 
   return (
-    <section className="py-16 md:py-24 px-4 bg-gradient-to-b from-white via-gray-50 to-white">
+    <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6 bg-gradient-to-b from-white via-gray-50 to-white">
       <div className="container mx-auto max-w-7xl">
         {/* Titre de section */}
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
             <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">
               {locale === 'fr'
                 ? "Plus qu'un trajet, une expérience premium"
                 : locale === 'ar'
@@ -76,7 +76,7 @@ export function ValueProposition() {
                 : 'More than a ride, a premium experience'}
           </h2>
           </div>
-          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mt-4">
+          <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-3xl mx-auto mt-4 px-2">
             {locale === 'fr'
               ? 'Découvrez pourquoi nos clients nous préfèrent aux applications de VTC classiques'
               : locale === 'ar'

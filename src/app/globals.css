@@ -34,10 +34,30 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Amélioration du texte sur mobile */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Optimisation mobile : améliorer la lisibilité */
+  @media (max-width: 768px) {
+    body {
+      font-size: 16px; /* Minimum pour éviter le zoom automatique sur iOS */
+      line-height: 1.6;
+    }
+    
+    /* Assurer un contraste suffisant */
+    a, button {
+      min-height: 44px; /* Minimum pour les zones cliquables */
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
   }
 }
 

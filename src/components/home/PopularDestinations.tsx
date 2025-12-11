@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PopularDestination } from '@/types'
 import { getTranslations, type Locale } from '@/lib/i18n'
 import { formatPrice } from '@/lib/utils'
+import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
 import { MapPin, Plane, Train, Navigation, ArrowRight } from 'lucide-react'
 
@@ -23,7 +24,7 @@ const iconMap: Record<string, React.ElementType> = {
   mapPin: MapPin,
 }
 
-export function PopularDestinations({ locale, whatsappNumber = '0033695297192' }: PopularDestinationsProps) {
+export function PopularDestinations({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }: PopularDestinationsProps) {
   const t = getTranslations(locale)
   const [destinations, setDestinations] = useState<PopularDestination[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,8 +99,8 @@ export function PopularDestinations({ locale, whatsappNumber = '0033695297192' }
       ? `مرحباً، أرغب بحجز رحلة إلى ${destinationName} (${selectedDestination.address}) بسعر ثابت ${formatPrice(selectedDestination.fixed_price, 'ar-SA')}.${passengerInfo}${babySeatInfo}${paymentInfo}`
       : `Hello, I would like to book a ride to ${destinationName} (${selectedDestination.address}) for a fixed price of ${formatPrice(selectedDestination.fixed_price, 'en-US')}.${passengerInfo}${babySeatInfo}${paymentInfo}`
 
-    const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    const whatsappUrl = createWhatsAppUrl(whatsappNumber, message)
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
     setSelectedDestination(null)
   }
 

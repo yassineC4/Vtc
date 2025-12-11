@@ -19,7 +19,7 @@ export function HomePageClient() {
   const { locale } = useLocale()
   const [reviews, setReviews] = useState<Review[]>([])
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-domain.com'
-  const phoneNumber = '+33695297192'
+  const phoneNumber = '+33 6 95 29 71 92'
 
   useEffect(() => {
     // Charger les avis pour le Schema.org
@@ -156,12 +156,12 @@ export function HomePageClient() {
 
         {/* Section Destinations Populaires */}
         <div id="popular-destinations">
-          <PopularDestinations locale={locale} whatsappNumber="0033695297192" />
+          <PopularDestinations locale={locale} />
         </div>
 
         <section id="ride-calculator" className="py-24 px-4">
           <div className="container mx-auto max-w-6xl">
-            <RideCalculator locale={locale} whatsappNumber="0033695297192" />
+            <RideCalculator locale={locale} />
           </div>
         </section>
 
@@ -219,7 +219,7 @@ export function HomePageClient() {
         <Footer />
         
         {/* Floating WhatsApp Button */}
-        <WhatsAppButton locale={locale} phoneNumber="0033695297192" />
+        <WhatsAppButton locale={locale} />
       </main>
     </>
   )

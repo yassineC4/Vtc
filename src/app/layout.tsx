@@ -93,7 +93,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-domain.com'
-  const phoneNumber = '+33695297192'
+  const phoneNumber = '+33 6 95 29 71 92'
 
   // Schema.org JSON-LD pour LocalBusiness (Chauffeur VTC)
   const localBusinessSchema = {

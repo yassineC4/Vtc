@@ -36,7 +36,7 @@ export function HeroSection() {
   return (
     <section 
       ref={sectionRef}
-      className="relative overflow-hidden min-h-[80vh] sm:min-h-[90vh] flex items-center pt-24 sm:pt-32 pb-16 sm:pb-24 px-4"
+      className="relative overflow-hidden min-h-[80vh] sm:min-h-[90vh] flex items-center pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6"
     >
       {/* Image en background avec effet parallax */}
       {!imageError && (
@@ -73,10 +73,10 @@ export function HeroSection() {
         </div>
         
         <div className={`text-center space-y-6 md:space-y-8 max-w-4xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '0.2s' }}>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-tight drop-shadow-2xl animate-fade-in-up">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight text-white leading-tight drop-shadow-2xl animate-fade-in-up">
             {t.home.title}
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-100 max-w-2xl mx-auto font-medium leading-relaxed px-4 drop-shadow-lg animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 max-w-2xl mx-auto font-medium leading-relaxed px-2 sm:px-4 drop-shadow-lg animate-fade-in" style={{ animationDelay: '0.4s' }}>
             {t.home.subtitle}
           </p>
         </div>

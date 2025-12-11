@@ -56,7 +56,7 @@ export function ReviewsSection({ locale }: ReviewsSectionProps) {
   }
 
   return (
-    <section className="py-24 px-4 bg-white">
+    <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6 bg-white">
       <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
