@@ -484,22 +484,32 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         status: 'pending' as const,
       }
 
+      console.log('📤 Envoi de la réservation:', bookingData)
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingData),
       })
 
+      console.log('📥 Réponse API:', response.status, response.statusText)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create booking')
+        console.error('❌ Erreur API:', errorData)
+        throw new Error(errorData.error || `Failed to create booking (${response.status})`)
       }
 
       // Vérifier que la réponse contient bien les données de la réservation créée
       const result = await response.json()
+      console.log('✅ Résultat API:', result)
+      
       if (!result.data || !result.data.id) {
-        throw new Error('Booking was not created successfully')
+        console.error('❌ Pas de données retournées:', result)
+        throw new Error('Booking was not created successfully - No data returned')
       }
+      
+      console.log('✅ Réservation créée avec ID:', result.data.id)
 
       setReservationData(data)
       setIsBooking(false)
@@ -535,14 +545,23 @@ Client: ${data.firstName} ${data.lastName}`
       
       alert(successMessage)
     } catch (error) {
-      console.error('Error creating booking:', error)
+      console.error('❌ Erreur lors de la création de la réservation:', error)
       setIsBooking(false)
-      const errorMessage = locale === 'fr'
-        ? 'Erreur lors de la création de la réservation. Veuillez réessayer.'
-        : locale === 'ar'
-        ? 'خطأ في إنشاء الحجز. يرجى المحاولة مرة أخرى.'
-        : 'Error creating booking. Please try again.'
-      alert(errorMessage)
+      
+      // Afficher un message d'erreur détaillé pour le debug
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (locale === 'fr'
+          ? 'Erreur lors de la création de la réservation. Veuillez réessayer.'
+          : locale === 'ar'
+          ? 'خطأ في إنشاء الحجز. يرجى المحاولة مرة أخرى.'
+          : 'Error creating booking. Please try again.')
+      
+      const fullErrorMessage = locale === 'fr'
+        ? `Erreur : ${errorMessage}\n\nVérifiez la console du navigateur (F12) et les logs serveur pour plus de détails.`
+        : `Error: ${errorMessage}\n\nCheck the browser console (F12) and server logs for more details.`
+      
+      alert(fullErrorMessage)
     }
   }
 
