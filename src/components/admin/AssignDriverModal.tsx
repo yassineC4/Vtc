@@ -112,10 +112,26 @@ export function AssignDriverModal({
         throw new Error(result.error || `HTTP error! status: ${response.status}`)
       }
 
+      // Vérifier que la mise à jour a bien été effectuée
+      const result = await response.json().catch(() => ({}))
+      if (!result.data || result.data.status !== 'confirmed') {
+        throw new Error('Booking was not confirmed successfully')
+      }
+
       const selectedDriver = drivers.find(d => d.id === selectedDriverId)
       
+      // ✅ SÉQUENCE CORRECTE : WhatsApp s'ouvre APRÈS la confirmation de la mise à jour en DB
       // Ouvrir WhatsApp vers le client avec message de confirmation
-      if (selectedDriver && booking.phone) {
+      if (selectedDriver) {
+        if (!booking.phone) {
+          // Avertir l'admin que le client n'a pas de numéro de téléphone
+          alert(locale === 'fr' 
+            ? '⚠️ Réservation confirmée mais le client n\'a pas fourni de numéro de téléphone. Vous devrez le contacter par email.' 
+            : '⚠️ Booking confirmed but the client did not provide a phone number. You will need to contact them by email.')
+          onAssigned()
+          onClose()
+          return
+        }
         const clientMessage = locale === 'fr'
           ? `Bonjour ${booking.first_name}, votre course est confirmée ✅.
 

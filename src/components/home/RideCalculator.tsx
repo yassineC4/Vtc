@@ -491,12 +491,20 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create booking')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create booking')
+      }
+
+      // Vérifier que la réponse contient bien les données de la réservation créée
+      const result = await response.json()
+      if (!result.data || !result.data.id) {
+        throw new Error('Booking was not created successfully')
       }
 
       setReservationData(data)
       setIsBooking(false)
       
+      // ✅ SÉQUENCE CORRECTE : WhatsApp s'ouvre APRÈS la confirmation de l'insertion en DB
       // Générer le message WhatsApp pour l'admin
       const adminMessage = locale === 'fr'
         ? `Bonjour, je viens de faire une demande de réservation sur le site.
