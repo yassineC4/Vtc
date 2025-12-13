@@ -76,6 +76,18 @@ export function useRideCalculator() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue'
+      const errorDetails = err instanceof Error ? err.stack : String(err)
+      
+      // ✅ Logs explicites pour Safari
+      console.error('❌ SAFARI DEBUG - useRideCalculator error:', {
+        message: errorMessage,
+        details: errorDetails,
+        origin,
+        destination,
+        retries,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        isSafari: typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
+      })
       
       // Retry logic
       if (retries > 0 && (errorMessage.includes('network') || errorMessage.includes('timeout'))) {

@@ -172,36 +172,71 @@ export async function calculateRoute(
   origin: string,
   destination: string
 ): Promise<{ distance: number; duration: number } | null> {
-  if (!window.google || !window.google.maps) {
-    throw new Error('Google Maps API not loaded')
+  if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+    const error = new Error('Google Maps API not loaded')
+    console.error('❌ SAFARI DEBUG - Google Maps not available:', {
+      hasWindow: typeof window !== 'undefined',
+      hasGoogle: typeof window !== 'undefined' && !!window.google,
+      hasMaps: typeof window !== 'undefined' && !!window.google?.maps,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    })
+    throw error
   }
 
   return new Promise((resolve, reject) => {
-    const service = new window.google.maps.DistanceMatrixService()
+    try {
+      const service = new window.google.maps.DistanceMatrixService()
 
-    service.getDistanceMatrix(
-      {
-        origins: [origin],
-        destinations: [destination],
-        travelMode: window.google.maps.TravelMode.DRIVING,
-        unitSystem: window.google.maps.UnitSystem.METRIC,
-      },
-      (response, status) => {
-        if (status === 'OK' && response) {
-          const element = response.rows[0].elements[0]
-          if (element.status === 'OK') {
-            resolve({
-              distance: element.distance.value, // en mètres
-              duration: element.duration.value, // en secondes
-            })
-          } else {
-            reject(new Error(`Route calculation failed: ${element.status}`))
+      service.getDistanceMatrix(
+        {
+          origins: [origin],
+          destinations: [destination],
+          travelMode: window.google.maps.TravelMode.DRIVING,
+          unitSystem: window.google.maps.UnitSystem.METRIC,
+        },
+        (response, status) => {
+          try {
+            if (status === 'OK' && response) {
+              const element = response.rows[0]?.elements[0]
+              if (element && element.status === 'OK') {
+                resolve({
+                  distance: element.distance.value, // en mètres
+                  duration: element.duration.value, // en secondes
+                })
+              } else {
+                const errorMsg = element?.status || 'Unknown element status'
+                console.error('❌ SAFARI DEBUG - Route calculation failed:', {
+                  status,
+                  elementStatus: errorMsg,
+                  response,
+                  origin,
+                  destination,
+                })
+                reject(new Error(`Route calculation failed: ${errorMsg}`))
+              }
+            } else {
+              console.error('❌ SAFARI DEBUG - Distance Matrix API error:', {
+                status,
+                origin,
+                destination,
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+              })
+              reject(new Error(`Distance Matrix API error: ${status}`))
+            }
+          } catch (callbackError) {
+            console.error('❌ SAFARI DEBUG - Error in DistanceMatrix callback:', callbackError)
+            reject(callbackError instanceof Error ? callbackError : new Error('Unknown error in callback'))
           }
-        } else {
-          reject(new Error(`Distance Matrix API error: ${status}`))
         }
-      }
-    )
+      )
+    } catch (initError) {
+      console.error('❌ SAFARI DEBUG - Error initializing DistanceMatrixService:', {
+        error: initError instanceof Error ? initError.message : String(initError),
+        stack: initError instanceof Error ? initError.stack : undefined,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      })
+      reject(initError instanceof Error ? initError : new Error('Failed to initialize DistanceMatrixService'))
+    }
   })
 }
 

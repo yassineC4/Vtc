@@ -439,16 +439,52 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         setShowSuccess(true)
         setRetryCount(0)
         
-        // Scroll smooth vers le résultat
+        // Scroll vers le résultat (compatible Safari - fallback si smooth ne marche pas)
         setTimeout(() => {
           const resultElement = document.getElementById('calculation-result')
-          resultElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          if (resultElement) {
+            try {
+              // Essayer smooth scroll (Chrome, Firefox)
+              resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            } catch (scrollError) {
+              // Fallback pour Safari qui peut avoir des problèmes avec smooth
+              try {
+                resultElement.scrollIntoView({ block: 'nearest' })
+              } catch (fallbackError) {
+                // Dernier recours : scroll manuel
+                window.scrollTo({
+                  top: resultElement.offsetTop - 100,
+                  behavior: 'smooth',
+                })
+              }
+            }
+          }
         }, 100)
       } else {
         setRetryCount(prev => prev + 1)
       }
     } catch (err) {
-      console.error('Calculation error:', err)
+      // ✅ Logs explicites pour Safari (visible même si console fermée via alert temporaire en dev)
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      const errorDetails = err instanceof Error ? err.stack : 'No stack trace'
+      
+      console.error('❌ SAFARI DEBUG - Calculation error:', {
+        message: errorMessage,
+        details: errorDetails,
+        departure: finalDeparture,
+        arrival: finalArrival,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        isSafari: typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
+      })
+      
+      // En développement, afficher une alerte pour Safari (à retirer en prod)
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+        if (isSafari) {
+          console.warn('⚠️ Safari détecté - Erreur:', errorMessage)
+        }
+      }
+      
       setRetryCount(prev => prev + 1)
     }
   }
@@ -498,16 +534,37 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         const bookingDate = new Date(year, month - 1, day, hours, minutes)
         scheduledDate = bookingDate.toISOString()
         
-        // Formater la date pour le message WhatsApp
-        formattedDateTime = bookingDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        }) + ' à ' + bookingDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+        // Formater la date pour le message WhatsApp (compatible Safari)
+        try {
+          formattedDateTime = bookingDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }) + ' à ' + bookingDate.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        } catch (formatError) {
+          // Fallback si toLocaleDateString/toLocaleTimeString échouent (Safari iOS parfois)
+          const dayNames = locale === 'fr' 
+            ? ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+            : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          const monthNames = locale === 'fr'
+            ? ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+            : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+          
+          const dayName = dayNames[bookingDate.getDay()]
+          const day = bookingDate.getDate()
+          const month = monthNames[bookingDate.getMonth()]
+          const year = bookingDate.getFullYear()
+          const hours = String(bookingDate.getHours()).padStart(2, '0')
+          const minutes = String(bookingDate.getMinutes()).padStart(2, '0')
+          
+          formattedDateTime = locale === 'fr'
+            ? `${dayName} ${day} ${month} ${year} à ${hours}:${minutes}`
+            : `${dayName}, ${month} ${day}, ${year} at ${hours}:${minutes}`
+        }
       } else {
         formattedDateTime = locale === 'fr' ? 'Immédiatement' : 'Immediately'
       }
