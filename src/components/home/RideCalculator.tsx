@@ -182,6 +182,91 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }, [arrival])
 
+  // ✅ Écouter l'événement personnalisé quand une destination populaire est sélectionnée
+  useEffect(() => {
+    const handlePopularDestinationSelected = (event: CustomEvent) => {
+      const { destination } = event.detail as { destination: PopularDestination }
+      
+      // Pré-remplir l'adresse d'arrivée
+      setArrival(destination.address)
+      setArrivalInput(destination.address)
+      
+      // Marquer comme destination populaire sélectionnée
+      setSelectedPopularDestination(destination)
+      
+      // Calculer automatiquement le prix si le départ est déjà défini
+      if (departure || departureInput) {
+        const finalDeparture = departure || departureInput
+        calculateRide(finalDeparture, destination.address)
+          .then((result) => {
+            if (result) {
+              // Utiliser le prix fixe de la destination populaire
+              let finalPrice = destination.fixed_price
+              if (isRoundTrip) {
+                finalPrice = (destination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+              }
+              
+              setCalculation({
+                ...result,
+                price: Math.round(finalPrice * 100) / 100,
+              })
+              setShowSuccess(true)
+              
+              // Scroll vers le résultat
+              setTimeout(() => {
+                const resultElement = document.getElementById('calculation-result')
+                if (resultElement) {
+                  resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                }
+              }, 300)
+            }
+          })
+          .catch((err) => {
+            console.error('Error calculating ride:', err)
+          })
+      }
+    }
+
+    // Écouter l'événement personnalisé
+    window.addEventListener('popularDestinationSelected', handlePopularDestinationSelected as EventListener)
+
+    return () => {
+      window.removeEventListener('popularDestinationSelected', handlePopularDestinationSelected as EventListener)
+    }
+  }, [departure, departureInput, isRoundTrip, calculateRide])
+
+  // ✅ Synchroniser avec localStorage au montage (pour récupérer l'adresse de départ de PopularDestinations)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedDeparture = localStorage.getItem('vtc_departure')
+      if (savedDeparture && savedDeparture !== departure) {
+        setDeparture(savedDeparture)
+        setDepartureInput(savedDeparture)
+      }
+      
+      const savedArrival = localStorage.getItem('vtc_arrival')
+      if (savedArrival && savedArrival !== arrival) {
+        setArrival(savedArrival)
+        setArrivalInput(savedArrival)
+      }
+      
+      // Récupérer la destination populaire sélectionnée si elle existe
+      try {
+        const savedPopularDest = localStorage.getItem('vtc_selected_popular_destination')
+        if (savedPopularDest) {
+          const popularDest = JSON.parse(savedPopularDest)
+          // Vérifier si l'adresse d'arrivée correspond
+          if (savedArrival === popularDest.address) {
+            setSelectedPopularDestination(popularDest as PopularDestination)
+          }
+        }
+      } catch (err) {
+        console.debug('Error parsing saved popular destination:', err)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Seulement au montage
+
   // ✅ FIX 3: Désactivé - Les courses immédiates sont toujours disponibles (gestion manuelle via WhatsApp)
   // Plus de vérification de disponibilité des chauffeurs - toujours permettre les courses immédiates
   useEffect(() => {

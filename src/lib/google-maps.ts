@@ -240,3 +240,67 @@ export async function calculateRoute(
   })
 }
 
+/**
+ * ✅ Calcul batch optimisé : Calcule les distances et durées pour plusieurs destinations en une seule requête API
+ * @param origin - Adresse de départ
+ * @param destinations - Tableau d'adresses de destinations
+ * @returns Promise avec un tableau de résultats (distance en mètres, duration en secondes) dans le même ordre que destinations
+ */
+export async function calculateDistanceMatrixBatch(
+  origin: string,
+  destinations: string[]
+): Promise<Array<{ distance: number; duration: number } | null>> {
+  if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+    throw new Error('Google Maps API not loaded')
+  }
+
+  if (destinations.length === 0) {
+    return []
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const service = new window.google.maps.DistanceMatrixService()
+
+      service.getDistanceMatrix(
+        {
+          origins: [origin],
+          destinations: destinations, // ✅ Batch : toutes les destinations en une seule requête
+          travelMode: window.google.maps.TravelMode.DRIVING,
+          unitSystem: window.google.maps.UnitSystem.METRIC,
+        },
+        (response, status) => {
+          try {
+            if (status === 'OK' && response && response.rows[0]) {
+              const row = response.rows[0]
+              // ✅ Mapper chaque élément de la réponse aux destinations
+              const results = row.elements.map((element) => {
+                if (element.status === 'OK' && element.distance && element.duration) {
+                  return {
+                    distance: element.distance.value, // en mètres
+                    duration: element.duration.value, // en secondes
+                  }
+                } else {
+                  // Si une destination a échoué, retourner null pour cette destination
+                  console.warn('Distance Matrix element status:', element.status)
+                  return null
+                }
+              })
+              resolve(results)
+            } else {
+              console.error('Distance Matrix API batch error:', { status, origin, destinationsCount: destinations.length })
+              reject(new Error(`Distance Matrix API batch error: ${status}`))
+            }
+          } catch (callbackError) {
+            console.error('Error in DistanceMatrix batch callback:', callbackError)
+            reject(callbackError instanceof Error ? callbackError : new Error('Unknown error in batch callback'))
+          }
+        }
+      )
+    } catch (initError) {
+      console.error('Error initializing DistanceMatrixService for batch:', initError)
+      reject(initError instanceof Error ? initError : new Error('Failed to initialize DistanceMatrixService'))
+    }
+  })
+}
+
