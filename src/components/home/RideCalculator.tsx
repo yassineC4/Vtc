@@ -390,7 +390,11 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   }, [vehicleCategory, isRoundTrip]) // Recalculer quand catégorie ou aller-retour change
 
   const handleCalculate = async () => {
-    if (!departure || !arrival) {
+    // Utiliser departureInput et arrivalInput si departure/arrival sont vides (pour permettre le calcul même si debounce n'a pas encore synchronisé)
+    const finalDeparture = departure || departureInput
+    const finalArrival = arrival || arrivalInput
+    
+    if (!finalDeparture || !finalArrival) {
       // Animation de shake sur les champs vides
       const inputs = document.querySelectorAll('input[type="text"]')
       inputs.forEach((input) => {
@@ -403,8 +407,16 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     setCalculation(null)
     setShowSuccess(false)
     
+    // Synchroniser immédiatement les valeurs si elles ne sont pas encore synchronisées
+    if (departureInput && !departure) {
+      setDeparture(departureInput)
+    }
+    if (arrivalInput && !arrival) {
+      setArrival(arrivalInput)
+    }
+    
     try {
-      const result = await calculateRide(departure, arrival)
+      const result = await calculateRide(finalDeparture, finalArrival)
       if (result) {
         // Stocker le prix de base (sans frais fixes)
         const basePrice = result.price
@@ -957,7 +969,7 @@ Client: ${data.firstName} ${data.lastName}`
 
           <Button
             onClick={handleCalculate}
-            disabled={loading || !departure || !arrival}
+            disabled={loading || (!departure && !departureInput) || (!arrival && !arrivalInput)}
             className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
