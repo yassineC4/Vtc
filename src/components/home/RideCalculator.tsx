@@ -166,68 +166,14 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }, [arrival])
 
-  // Vérifier la disponibilité des chauffeurs pour les courses immédiates
+  // ✅ FIX 3: Désactivé - Les courses immédiates sont toujours disponibles (gestion manuelle via WhatsApp)
+  // Plus de vérification de disponibilité des chauffeurs - toujours permettre les courses immédiates
   useEffect(() => {
-    const checkAvailability = async () => {
-      setCheckingAvailability(true)
-      try {
-        const supabase = createClient()
-        
-        // Charger les chauffeurs en ligne
-        const { data: onlineDriversData, error: driversError } = await (supabase
-          .from('drivers') as any)
-          .select('id')
-          .eq('is_online', true)
-
-        if (driversError) throw driversError
-
-        const onlineDrivers = (onlineDriversData || []) as Array<{ id: string }>
-
-        if (onlineDrivers.length === 0) {
-          setIsImmediateAvailable(false)
-          setCheckingAvailability(false)
-          return
-        }
-
-        // Vérifier si un chauffeur en ligne a une course en cours
-        const now = new Date()
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
-        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
-
-        const driverIds = onlineDrivers.map(d => d.id)
-
-        const { data: activeBookings, error: bookingsError } = await (supabase
-          .from('bookings') as any)
-          .select('driver_id')
-          .in('driver_id', driverIds)
-          .in('status', ['confirmed', 'in_progress'])
-          .gte('scheduled_date', oneHourAgo.toISOString())
-          .lte('scheduled_date', oneHourLater.toISOString())
-
-        if (bookingsError) throw bookingsError
-
-        // Si tous les chauffeurs en ligne ont des courses, pas disponible
-        const availableDriverIds = driverIds
-          .filter((id: string) => !activeBookings?.some((b: { driver_id: string }) => b.driver_id === id))
-
-        setIsImmediateAvailable(availableDriverIds.length > 0)
-      } catch (error) {
-        console.error('Error checking availability:', error)
-        // En cas d'erreur, on assume que c'est disponible pour ne pas bloquer l'utilisateur
-        setIsImmediateAvailable(true)
-      } finally {
-        setCheckingAvailability(false)
-      }
-    }
-
-    // Vérifier au chargement et toutes les 30 secondes
-    checkAvailability()
-    const interval = setInterval(checkAvailability, 30000)
-
-    return () => clearInterval(interval)
+    // Toujours permettre les courses immédiates, même si aucun chauffeur n'est connecté
+    setIsImmediateAvailable(true)
   }, [])
 
-  // Validation de la date/heure pour les réservations
+  // ✅ FIX 2: Validation stricte de la date/heure pour les réservations (minimum 1h à l'avance)
   const validateDateTime = (selectedDate: string, selectedTime: string): string | null => {
     if (rideType !== 'reservation' || !selectedDate || !selectedTime) {
       return null
@@ -241,16 +187,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000) // +1 heure
 
     if (selectedDateTime < oneHourLater) {
-      const phoneNumber = whatsappNumber || DEFAULT_PHONE_NUMBER
-      const formattedPhone = phoneNumber.startsWith('33') 
-        ? `+${phoneNumber.slice(0, 2)} ${phoneNumber.slice(2, 4)} ${phoneNumber.slice(4, 6)} ${phoneNumber.slice(6, 8)} ${phoneNumber.slice(8, 10)}`
-        : phoneNumber
-      
+      // ✅ Message d'erreur bloquant : les réservations doivent être 1h à l'avance minimum
       return locale === 'fr'
-        ? `Pour les départs immédiats, veuillez nous appeler directement au ${formattedPhone}.`
+        ? 'Les réservations doivent être faites au minimum 1 heure à l\'avance. Pour un départ immédiat, sélectionnez "Course immédiate".'
         : locale === 'ar'
-        ? `للرحلات الفورية، يرجى الاتصال بنا مباشرة على ${formattedPhone}.`
-        : `For immediate departures, please call us directly at ${formattedPhone}.`
+        ? 'يجب أن تتم الحجوزات قبل ساعة واحدة على الأقل. للرحلات الفورية، يرجى اختيار "رحلة فورية".'
+        : 'Reservations must be made at least 1 hour in advance. For immediate departure, select "Immediate ride".'
     }
 
     return null
@@ -363,31 +305,35 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }
 
-  // Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
+  // ✅ FIX: Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
   useEffect(() => {
-    // Si un calcul existe déjà avec un prix de base, on recalcule le prix sans rappeler l'API
-    if (calculation && calculation.basePrice !== undefined && calculation.basePrice !== null) {
-      const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-      const oneWayPrice = calculation.basePrice + fixedPrice
-      
-      // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-      let finalPrice = oneWayPrice
-      if (isRoundTrip) {
-        finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+    // Utiliser la forme fonctionnelle de setState pour accéder à la valeur actuelle sans la mettre en dépendance
+    setCalculation((currentCalculation) => {
+      // Si un calcul existe déjà avec un prix de base, on recalcule le prix sans rappeler l'API
+      if (currentCalculation && currentCalculation.basePrice !== undefined && currentCalculation.basePrice !== null) {
+        const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
+        const oneWayPrice = currentCalculation.basePrice + fixedPrice
+        
+        // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
+        let finalPrice = oneWayPrice
+        if (isRoundTrip) {
+          finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+        }
+        
+        const newPrice = Math.round(finalPrice * 100) / 100
+        
+        // Retourner l'objet mis à jour uniquement si le prix a réellement changé
+        if (newPrice !== currentCalculation.price) {
+          return {
+            ...currentCalculation,
+            price: newPrice,
+          }
+        }
       }
-      
-      const newPrice = Math.round(finalPrice * 100) / 100
-      
-      // Éviter les mises à jour inutiles si le prix n'a pas changé
-      if (newPrice !== calculation.price) {
-        setCalculation({
-          ...calculation,
-          price: newPrice,
-        })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicleCategory, isRoundTrip]) // Recalculer quand catégorie ou aller-retour change
+      // Retourner la valeur actuelle si aucune mise à jour nécessaire
+      return currentCalculation
+    })
+  }, [vehicleCategory, isRoundTrip]) // ✅ Dépendances: seulement vehicleCategory et isRoundTrip (pas calculation pour éviter la boucle infinie)
 
   const handleCalculate = async () => {
     // Utiliser departureInput et arrivalInput si departure/arrival sont vides (pour permettre le calcul même si debounce n'a pas encore synchronisé)
@@ -721,28 +667,17 @@ Client: ${data.firstName} ${data.lastName}`
               <button
                 type="button"
                 onClick={() => setRideType('immediate')}
-                disabled={!isImmediateAvailable}
                 className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
                   rideType === 'immediate'
                     ? 'border-primary bg-primary/10 text-primary shadow-lg scale-105'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-md'
-                } ${!isImmediateAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={!isImmediateAvailable ? (locale === 'fr' ? 'Tous nos chauffeurs sont occupés' : 'All drivers are busy') : ''}
+                }`}
               >
-                <Zap className={`w-5 h-5 ${rideType === 'immediate' && isImmediateAvailable ? 'animate-pulse' : ''}`} />
+                <Zap className={`w-5 h-5 ${rideType === 'immediate' ? 'animate-pulse' : ''}`} />
                 <span className="font-semibold">
                   {locale === 'fr' ? 'Course immédiate' : 'Immediate ride'}
                 </span>
               </button>
-              {!isImmediateAvailable && rideType === 'immediate' && (
-                <div className="col-span-2 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
-                  <p className="text-sm text-yellow-800 font-medium">
-                    {locale === 'fr'
-                      ? '⚠️ Tous nos chauffeurs sont occupés. Veuillez faire une réservation ou réessayer plus tard.'
-                      : '⚠️ All drivers are busy. Please make a reservation or try again later.'}
-                  </p>
-                </div>
-              )}
               <button
                 type="button"
                 onClick={() => setRideType('reservation')}
@@ -1001,10 +936,25 @@ Client: ${data.firstName} ${data.lastName}`
                       type="time"
                       value={time}
                       onChange={(e) => {
-                        setTime(e.target.value)
-                        if (date) {
-                          const error = validateDateTime(date, e.target.value)
-                          setDateTimeError(error)
+                        const newTime = e.target.value
+                        setTime(newTime)
+                        if (date && newTime) {
+                          const error = validateDateTime(date, newTime)
+                          if (error) {
+                            setDateTimeError(error)
+                            // ✅ FIX 2: Si date/heure invalide (< 1h), basculer automatiquement sur "Course immédiate"
+                            setRideType('immediate')
+                            // Afficher un message informatif
+                            setTimeout(() => {
+                              alert(locale === 'fr'
+                                ? '⚠️ La date/heure sélectionnée est trop proche. Passage automatique en "Course immédiate".'
+                                : locale === 'ar'
+                                ? '⚠️ التاريخ والوقت المحددان قريبان جداً. التحويل التلقائي إلى "رحلة فورية".'
+                                : '⚠️ Selected date/time is too close. Automatically switching to "Immediate ride".')
+                            }, 100)
+                          } else {
+                            setDateTimeError(null)
+                          }
                         }
                       }}
                       className="pl-12"
