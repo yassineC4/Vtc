@@ -60,7 +60,16 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
-  const [time, setTime] = useState('')
+  const [time, setTime] = useState(() => {
+    // Initialiser avec l'heure actuelle au format HH:MM
+    if (typeof window !== 'undefined') {
+      const now = new Date()
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      return `${hours}:${minutes}`
+    }
+    return ''
+  })
   const [dateTimeError, setDateTimeError] = useState<string | null>(null)
   const [isBooking, setIsBooking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // Protection contre les doubles clics
@@ -948,7 +957,7 @@ Client: ${data.firstName} ${data.lastName}`
 
           <Button
             onClick={handleCalculate}
-            disabled={loading || !departure || !arrival || (rideType === 'reservation' && !!dateTimeError)}
+            disabled={loading || !departure || !arrival}
             className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
