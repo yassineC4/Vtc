@@ -109,6 +109,20 @@ export function AssignDriverModal({
           return
         }
         const result = await response.json().catch(() => ({}))
+        
+        // ✅ Gestion spécifique des conflits (409)
+        if (response.status === 409) {
+          const errorMessage = result.conflict
+            ? locale === 'fr'
+              ? 'Cette réservation a été modifiée par un autre administrateur. Veuillez actualiser la page.'
+              : 'This booking was modified by another administrator. Please refresh the page.'
+            : result.error || 'Conflict detected'
+          alert(errorMessage)
+          onAssigned() // Rafraîchir la liste
+          onClose()
+          return
+        }
+        
         throw new Error(result.error || `HTTP error! status: ${response.status}`)
       }
 

@@ -166,12 +166,35 @@ ALTER TABLE popular_destinations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
--- Supprimer les politiques si elles existent déjà (pour éviter les erreurs)
+-- Supprimer TOUTES les politiques existantes pour éviter les conflits
+-- (Certaines peuvent avoir été créées par d'autres scripts)
+
+-- Supprimer les politiques settings
 DROP POLICY IF EXISTS "Settings are viewable by everyone" ON settings;
+DROP POLICY IF EXISTS "Admins can update settings" ON settings;
+
+-- Supprimer les politiques reviews
 DROP POLICY IF EXISTS "Approved reviews are viewable by everyone" ON reviews;
 DROP POLICY IF EXISTS "Anyone can create a review" ON reviews;
+DROP POLICY IF EXISTS "Admins can manage reviews" ON reviews;
+
+-- Supprimer les politiques popular_destinations
 DROP POLICY IF EXISTS "Active destinations are viewable by everyone" ON popular_destinations;
+
+-- Supprimer TOUTES les politiques bookings (anciennes et nouvelles)
 DROP POLICY IF EXISTS "Anyone can create a booking" ON bookings;
+DROP POLICY IF EXISTS "Anyone can insert bookings" ON bookings;
+DROP POLICY IF EXISTS "Public insert for bookings" ON bookings;
+DROP POLICY IF EXISTS "Authenticated users can view bookings" ON bookings;
+DROP POLICY IF EXISTS "Authenticated users can update bookings" ON bookings;
+DROP POLICY IF EXISTS "No direct read access to bookings" ON bookings;
+DROP POLICY IF EXISTS "No direct update access to bookings" ON bookings;
+DROP POLICY IF EXISTS "No direct delete access to bookings" ON bookings;
+
+-- Supprimer TOUTES les politiques drivers
+DROP POLICY IF EXISTS "No direct access to drivers" ON drivers;
+DROP POLICY IF EXISTS "No direct update access to drivers" ON drivers;
+DROP POLICY IF EXISTS "No direct delete access to drivers" ON drivers;
 
 -- Politique pour settings : Lecture publique, écriture admin uniquement
 CREATE POLICY "Settings are viewable by everyone"
@@ -196,6 +219,34 @@ CREATE POLICY "Active destinations are viewable by everyone"
 CREATE POLICY "Anyone can create a booking"
   ON bookings FOR INSERT
   WITH CHECK (true);
+
+-- ✅ SÉCURITÉ CRITIQUE: Bloquer tout accès direct à bookings (SELECT/UPDATE/DELETE)
+-- Seul le service_role (via API) peut accéder à ces données
+CREATE POLICY "No direct read access to bookings"
+  ON bookings FOR SELECT
+  USING (false);
+
+CREATE POLICY "No direct update access to bookings"
+  ON bookings FOR UPDATE
+  USING (false);
+
+CREATE POLICY "No direct delete access to bookings"
+  ON bookings FOR DELETE
+  USING (false);
+
+-- ✅ SÉCURITÉ CRITIQUE: Bloquer tout accès direct à drivers
+-- Seul le service_role (via API) peut accéder à ces données
+CREATE POLICY "No direct access to drivers"
+  ON drivers FOR SELECT
+  USING (false);
+
+CREATE POLICY "No direct update access to drivers"
+  ON drivers FOR UPDATE
+  USING (false);
+
+CREATE POLICY "No direct delete access to drivers"
+  ON drivers FOR DELETE
+  USING (false);
 
 -- Note: Pour les opérations UPDATE/DELETE sur reviews et settings,
 -- vous devrez créer des politiques spécifiques basées sur l'authentification

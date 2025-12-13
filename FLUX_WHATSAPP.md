@@ -194,3 +194,4 @@ La table `bookings` contient :
 - [ ] Templates de messages personnalisables
 - [ ] Support de WhatsApp Business API pour l'envoi automatique
 
+

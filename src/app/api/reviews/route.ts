@@ -23,6 +23,19 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // ✅ CRITIQUE: Whitelist des statuts valides
+    const VALID_REVIEW_STATUSES = ['pending', 'approved']
+    if (!VALID_REVIEW_STATUSES.includes(status)) {
+      return NextResponse.json(
+        {
+          error: `Invalid status. Must be one of: ${VALID_REVIEW_STATUSES.join(', ')}`,
+          received_status: status,
+          valid_statuses: VALID_REVIEW_STATUSES,
+        },
+        { status: 400 }
+      )
+    }
+
     const supabase = await createAdminClient()
 
     const { error } = await (supabase as any)
@@ -31,12 +44,28 @@ export async function PATCH(request: NextRequest) {
       .eq('id', id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Error updating review:', error)
+      return NextResponse.json(
+        { 
+          error: process.env.NODE_ENV === 'production' 
+            ? 'Failed to update review' 
+            : error.message 
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('Exception in PATCH /api/reviews:', error)
+    return NextResponse.json(
+      { 
+        error: process.env.NODE_ENV === 'production' 
+          ? 'Internal server error' 
+          : (error instanceof Error ? error.message : 'Internal server error')
+      },
+      { status: 500 }
+    )
   }
 }
 

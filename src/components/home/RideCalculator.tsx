@@ -63,12 +63,14 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [time, setTime] = useState('')
   const [dateTimeError, setDateTimeError] = useState<string | null>(null)
   const [isBooking, setIsBooking] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) // Protection contre les doubles clics
   const [isImmediateAvailable, setIsImmediateAvailable] = useState(true)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [calculation, setCalculation] = useState<{
     distance: number
     duration: number
     price: number
+    basePrice?: number // Prix de base sans les frais fixes de véhicule
   } | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
@@ -352,11 +354,31 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }
 
-  // Recalculer les prix des destinations quand la catégorie change (MAIS SEULEMENT si on a déjà une position)
+  // Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
   useEffect(() => {
-    // On ne recalcule PAS automatiquement - l'utilisateur doit cliquer sur "Ma position" à nouveau
-    // pour économiser les appels API
-  }, [vehicleCategory])
+    // Si un calcul existe déjà avec un prix de base, on recalcule le prix sans rappeler l'API
+    if (calculation && calculation.basePrice !== undefined && calculation.basePrice !== null) {
+      const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
+      const oneWayPrice = calculation.basePrice + fixedPrice
+      
+      // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
+      let finalPrice = oneWayPrice
+      if (isRoundTrip) {
+        finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+      }
+      
+      const newPrice = Math.round(finalPrice * 100) / 100
+      
+      // Éviter les mises à jour inutiles si le prix n'a pas changé
+      if (newPrice !== calculation.price) {
+        setCalculation({
+          ...calculation,
+          price: newPrice,
+        })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleCategory, isRoundTrip]) // Recalculer quand catégorie ou aller-retour change
 
   const handleCalculate = async () => {
     if (!departure || !arrival) {
@@ -375,9 +397,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     try {
       const result = await calculateRide(departure, arrival)
       if (result) {
+        // Stocker le prix de base (sans frais fixes)
+        const basePrice = result.price
+        
         // Ajouter le prix fixe selon la catégorie de véhicule
         const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-        const oneWayPrice = result.price + fixedPrice
+        const oneWayPrice = basePrice + fixedPrice
         
         // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
         let finalPrice = oneWayPrice
@@ -387,6 +412,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         
         setCalculation({
           ...result,
+          basePrice, // Stocker le prix de base pour recalculer plus tard
           price: Math.round(finalPrice * 100) / 100,
         })
         setShowSuccess(true)
@@ -425,7 +451,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   }
 
   const handleReservationConfirm = async (data: ReservationData) => {
-    if (!calculation || !departure || !arrival) return
+    // 🔒 Protection contre les doubles clics (race condition)
+    if (isSubmitting || !calculation || !departure || !arrival) return
 
     // Valider à nouveau la date/heure avant confirmation
     if (rideType === 'reservation' && date && time) {
@@ -437,6 +464,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
 
     setIsBooking(true)
+    setIsSubmitting(true) // 🔒 Blocage immédiat
     setDateTimeError(null)
 
     try {
@@ -513,6 +541,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 
       setReservationData(data)
       setIsBooking(false)
+      setIsSubmitting(false) // 🔓 Déblocage après succès
       
       // ✅ SÉQUENCE CORRECTE : WhatsApp s'ouvre APRÈS la confirmation de l'insertion en DB
       // Générer le message WhatsApp pour l'admin
@@ -547,6 +576,7 @@ Client: ${data.firstName} ${data.lastName}`
     } catch (error) {
       console.error('❌ Erreur lors de la création de la réservation:', error)
       setIsBooking(false)
+      setIsSubmitting(false) // 🔓 Déblocage après erreur
       
       // Afficher un message d'erreur détaillé pour le debug
       const errorMessage = error instanceof Error 
@@ -1106,7 +1136,7 @@ Client: ${data.firstName} ${data.lastName}`
               
               <Button 
                 onClick={handleBook} 
-                disabled={isBooking || (rideType === 'reservation' && !!dateTimeError)}
+                disabled={isBooking || isSubmitting || (rideType === 'reservation' && !!dateTimeError)}
                 className="w-full h-14 text-base mt-6 relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl animate-pulse-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 size="lg"
               >
