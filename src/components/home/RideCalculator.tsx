@@ -27,12 +27,15 @@ interface RideCalculatorProps {
 type RideType = 'immediate' | 'reservation'
 type VehicleCategory = 'standard' | 'berline' | 'van'
 
-// Prix fixes selon la catégorie de véhicule (en euros)
-const VEHICLE_FIXED_PRICES: Record<VehicleCategory, number> = {
-  standard: 2,
-  berline: 3,
-  van: 3,
+// ✅ Nouvelle logique : Prix au kilomètre selon la catégorie de véhicule (en euros/km)
+const VEHICLE_PRICE_PER_KM: Record<VehicleCategory, number> = {
+  standard: 2.00,
+  berline: 3.00,
+  van: 3.00,
 }
+
+// Prise en charge de base (en euros) - 0€ pour l'instant comme demandé
+const BASE_CHARGE = 0
 
 // Majoration pour garantie de service aller-retour (10% de majoration)
 const ROUND_TRIP_PREMIUM_FEE = 0.10
@@ -244,9 +247,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
           try {
             const result = await calculateRide(originAddress, dest.address)
             if (result) {
-              // Ajouter le prix fixe selon la catégorie de véhicule
-              const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-              let oneWayPrice = result.price + fixedPrice
+              // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
+              const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
+              const distanceInKm = result.distance / 1000
+              
+              // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
+              let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
               
               // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
               let adjustedPrice = oneWayPrice
@@ -261,13 +267,11 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
                 loading: false,
               }
             } else {
-              // En cas d'erreur, utiliser le prix fixe de la destination + prix fixe véhicule
-              const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-              let oneWayPrice = dest.fixed_price + fixedPrice
-              
-              let finalPrice = oneWayPrice
+              // En cas d'erreur, utiliser le prix fixe de la destination (fallback)
+              // On ne peut pas calculer, donc on garde le prix fixe de la destination
+              let finalPrice = dest.fixed_price
               if (isRoundTrip) {
-                finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+                finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
               }
               
               return {
@@ -279,12 +283,10 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
             }
           } catch (err) {
             console.error(`Error calculating price for ${dest.name_fr}:`, err)
-            const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-            let oneWayPrice = dest.fixed_price + fixedPrice
-            
-            let finalPrice = oneWayPrice
+            // En cas d'erreur, utiliser le prix fixe de la destination (fallback)
+            let finalPrice = dest.fixed_price
             if (isRoundTrip) {
-              finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+              finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
             }
             
             return {
@@ -305,14 +307,20 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }
 
-  // ✅ FIX: Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
+  // ✅ Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
   useEffect(() => {
     // Utiliser la forme fonctionnelle de setState pour accéder à la valeur actuelle sans la mettre en dépendance
     setCalculation((currentCalculation) => {
-      // Si un calcul existe déjà avec un prix de base, on recalcule le prix sans rappeler l'API
-      if (currentCalculation && currentCalculation.basePrice !== undefined && currentCalculation.basePrice !== null) {
-        const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-        const oneWayPrice = currentCalculation.basePrice + fixedPrice
+      // Si un calcul existe déjà avec une distance, on recalcule le prix avec le nouveau prix au km
+      if (currentCalculation && currentCalculation.distance) {
+        // Récupérer le prix au km selon la catégorie
+        const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
+        
+        // Calculer la distance en km
+        const distanceInKm = currentCalculation.distance / 1000
+        
+        // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
+        let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
         
         // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
         let finalPrice = oneWayPrice
@@ -333,7 +341,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       // Retourner la valeur actuelle si aucune mise à jour nécessaire
       return currentCalculation
     })
-  }, [vehicleCategory, isRoundTrip]) // ✅ Dépendances: seulement vehicleCategory et isRoundTrip (pas calculation pour éviter la boucle infinie)
+  }, [vehicleCategory, isRoundTrip]) // ✅ Dépendances: seulement vehicleCategory et isRoundTrip
 
   const handleCalculate = async () => {
     // Utiliser departureInput et arrivalInput si departure/arrival sont vides (pour permettre le calcul même si debounce n'a pas encore synchronisé)
@@ -364,12 +372,15 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     try {
       const result = await calculateRide(finalDeparture, finalArrival)
       if (result) {
-        // Stocker le prix de base (sans frais fixes)
-        const basePrice = result.price
+        // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
+        // Récupérer le prix au km selon la catégorie
+        const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
         
-        // Ajouter le prix fixe selon la catégorie de véhicule
-        const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-        const oneWayPrice = basePrice + fixedPrice
+        // Calculer la distance en km
+        const distanceInKm = result.distance / 1000
+        
+        // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
+        let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
         
         // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
         let finalPrice = oneWayPrice
@@ -379,7 +390,6 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         
         setCalculation({
           ...result,
-          basePrice, // Stocker le prix de base pour recalculer plus tard
           price: Math.round(finalPrice * 100) / 100,
         })
         setShowSuccess(true)
@@ -1033,9 +1043,12 @@ Client: ${data.firstName} ${data.lastName}`
                             try {
                               const result = await calculateRide(departure, dest.address)
                               if (result) {
-                                // Ajouter le prix fixe selon la catégorie de véhicule
-                                const fixedPrice = VEHICLE_FIXED_PRICES[vehicleCategory]
-                                const oneWayPrice = result.price + fixedPrice
+                                // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
+                                const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
+                                const distanceInKm = result.distance / 1000
+                                
+                                // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
+                                let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
                                 
                                 // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
                                 let finalPrice = oneWayPrice
