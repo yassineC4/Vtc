@@ -15,7 +15,7 @@ import { getTranslations, type Locale } from '@/lib/i18n'
 import { useDebounce, debounce } from '@/lib/debounce'
 import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER, formatPhoneForWhatsApp } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
-import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, TrendingUp, Car, Crown, Users, Gem } from 'lucide-react'
+import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, TrendingUp, Car, Crown, Users, Gem, Info, ArrowUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PopularDestination } from '@/types'
 
@@ -27,15 +27,25 @@ interface RideCalculatorProps {
 type RideType = 'immediate' | 'reservation'
 type VehicleCategory = 'standard' | 'berline' | 'van'
 
-// ✅ Nouvelle logique : Prix au kilomètre selon la catégorie de véhicule (en euros/km)
-const VEHICLE_PRICE_PER_KM: Record<VehicleCategory, number> = {
-  standard: 2.00,
-  berline: 3.00,
-  van: 3.00,
+// ✅ Fonction utilitaire : Obtenir le taux au km selon la distance totale et la catégorie (tarification dégressive)
+// Le taux s'applique sur la totalité de la distance (pas de calcul par tranche)
+function getRatePerKm(distanceInKm: number, category: VehicleCategory): number {
+  if (category === 'standard') {
+    // STANDARD : Tarification dégressive par paliers
+    if (distanceInKm <= 15) return 3.00
+    if (distanceInKm <= 50) return 2.70
+    if (distanceInKm <= 70) return 2.50
+    if (distanceInKm <= 200) return 2.10
+    return 1.70 // Plus de 200 km
+  } else {
+    // BERLINE & VAN : Tarification dégressive par paliers
+    if (distanceInKm <= 15) return 4.00
+    if (distanceInKm <= 50) return 3.70
+    if (distanceInKm <= 70) return 3.50
+    if (distanceInKm <= 200) return 3.10
+    return 1.90 // Plus de 200 km
+  }
 }
-
-// Prise en charge de base (en euros) - 0€ pour l'instant comme demandé
-const BASE_CHARGE = 0
 
 // Majoration pour garantie de service aller-retour (10% de majoration)
 const ROUND_TRIP_PREMIUM_FEE = 0.10
@@ -78,6 +88,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [isSubmitting, setIsSubmitting] = useState(false) // Protection contre les doubles clics
   const [isImmediateAvailable, setIsImmediateAvailable] = useState(true)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [selectedPopularDestination, setSelectedPopularDestination] = useState<PopularDestination | null>(null) // ✅ Pour identifier si c'est une destination populaire
   const [calculation, setCalculation] = useState<{
     distance: number
     duration: number
@@ -127,6 +138,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     if (place.formatted_address) {
       setArrival(place.formatted_address)
       setArrivalInput(place.formatted_address)
+      // ✅ Réinitialiser la destination populaire si l'utilisateur tape manuellement
+      setSelectedPopularDestination(null)
     }
   }, [])
 
@@ -241,49 +254,27 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       }))
       setDestinationPrices(destinationsWithPrices)
 
-      // Calculer les prix réels pour chaque destination
+      // ✅ Pour les destinations populaires, on garde toujours le prix fixe (pas de calcul au km)
+      // On peut calculer la distance pour l'affichage, mais le prix reste fixe
       const calculatedPrices = await Promise.all(
         destinations.map(async (dest: any) => {
           try {
             const result = await calculateRide(originAddress, dest.address)
-            if (result) {
-              // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
-              const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
-              const distanceInKm = result.distance / 1000
-              
-              // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
-              let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
-              
-              // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-              let adjustedPrice = oneWayPrice
-              if (isRoundTrip) {
-                adjustedPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-              }
-              
-              return {
-                destination: dest as PopularDestination,
-                price: Math.round(adjustedPrice * 100) / 100,
-                distance: result.distance,
-                loading: false,
-              }
-            } else {
-              // En cas d'erreur, utiliser le prix fixe de la destination (fallback)
-              // On ne peut pas calculer, donc on garde le prix fixe de la destination
-              let finalPrice = dest.fixed_price
-              if (isRoundTrip) {
-                finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-              }
-              
-              return {
-                destination: dest as PopularDestination,
-                price: Math.round(finalPrice * 100) / 100,
-                distance: 0,
-                loading: false,
-              }
+            // ✅ Utiliser le prix fixe de la destination populaire (pas de calcul au km)
+            let finalPrice = dest.fixed_price
+            if (isRoundTrip) {
+              finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+            }
+            
+            return {
+              destination: dest as PopularDestination,
+              price: Math.round(finalPrice * 100) / 100,
+              distance: result ? result.distance : 0,
+              loading: false,
             }
           } catch (err) {
-            console.error(`Error calculating price for ${dest.name_fr}:`, err)
-            // En cas d'erreur, utiliser le prix fixe de la destination (fallback)
+            console.error(`Error calculating distance for ${dest.name_fr}:`, err)
+            // En cas d'erreur, utiliser le prix fixe de la destination
             let finalPrice = dest.fixed_price
             if (isRoundTrip) {
               finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
@@ -307,20 +298,79 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }
 
+  // ✅ Détecter automatiquement si l'adresse d'arrivée correspond à une destination populaire
+  useEffect(() => {
+    const checkPopularDestination = async () => {
+      // Si l'utilisateur a déjà sélectionné une destination populaire, ne pas vérifier
+      if (selectedPopularDestination) {
+        return
+      }
+      
+      // Si l'adresse d'arrivée est vide, ne pas vérifier
+      if (!arrival && !arrivalInput) {
+        return
+      }
+      
+      const arrivalAddress = arrival || arrivalInput
+      
+      try {
+        const supabase = createClient()
+        const { data: destinations, error } = await supabase
+          .from('popular_destinations')
+          .select('*')
+          .eq('is_active', true)
+          .eq('address', arrivalAddress)
+          .single()
+        
+        if (!error && destinations) {
+          // ✅ Destination populaire détectée automatiquement
+          setSelectedPopularDestination(destinations as PopularDestination)
+        } else {
+          // Si l'adresse ne correspond pas exactement, vérifier si elle contient l'adresse d'une destination populaire
+          const { data: allDestinations } = await supabase
+            .from('popular_destinations')
+            .select('*')
+            .eq('is_active', true)
+          
+          if (allDestinations) {
+            const matchingDestination = allDestinations.find((dest: any) => 
+              arrivalAddress.toLowerCase().includes(dest.address.toLowerCase()) ||
+              dest.address.toLowerCase().includes(arrivalAddress.toLowerCase())
+            )
+            
+            if (matchingDestination) {
+              setSelectedPopularDestination(matchingDestination as PopularDestination)
+            }
+          }
+        }
+      } catch (err) {
+        // En cas d'erreur, on ignore silencieusement (pas critique)
+        console.debug('Error checking popular destination:', err)
+      }
+    }
+    
+    checkPopularDestination()
+  }, [arrival, arrivalInput, selectedPopularDestination])
+
   // ✅ Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
   useEffect(() => {
     // Utiliser la forme fonctionnelle de setState pour accéder à la valeur actuelle sans la mettre en dépendance
     setCalculation((currentCalculation) => {
-      // Si un calcul existe déjà avec une distance, on recalcule le prix avec le nouveau prix au km
+      // Si c'est une destination populaire, ne pas recalculer (prix fixe)
+      if (selectedPopularDestination) {
+        return currentCalculation
+      }
+      
+      // Si un calcul existe déjà avec une distance, on recalcule le prix avec la tarification dégressive
       if (currentCalculation && currentCalculation.distance) {
-        // Récupérer le prix au km selon la catégorie
-        const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
-        
         // Calculer la distance en km
         const distanceInKm = currentCalculation.distance / 1000
         
-        // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
-        let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
+        // ✅ Nouvelle logique : Obtenir le taux au km selon la distance totale et la catégorie (tarification dégressive)
+        const ratePerKm = getRatePerKm(distanceInKm, vehicleCategory)
+        
+        // ✅ Formule : Prix = Distance_en_km * Taux_Identifié
+        let oneWayPrice = distanceInKm * ratePerKm
         
         // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
         let finalPrice = oneWayPrice
@@ -341,7 +391,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       // Retourner la valeur actuelle si aucune mise à jour nécessaire
       return currentCalculation
     })
-  }, [vehicleCategory, isRoundTrip]) // ✅ Dépendances: seulement vehicleCategory et isRoundTrip
+  }, [vehicleCategory, isRoundTrip, selectedPopularDestination]) // ✅ Dépendances: vehicleCategory, isRoundTrip, et selectedPopularDestination
 
   const handleCalculate = async () => {
     // Utiliser departureInput et arrivalInput si departure/arrival sont vides (pour permettre le calcul même si debounce n'a pas encore synchronisé)
@@ -372,20 +422,30 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     try {
       const result = await calculateRide(finalDeparture, finalArrival)
       if (result) {
-        // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
-        // Récupérer le prix au km selon la catégorie
-        const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
+        let finalPrice: number
         
-        // Calculer la distance en km
-        const distanceInKm = result.distance / 1000
-        
-        // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
-        let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
-        
-        // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-        let finalPrice = oneWayPrice
-        if (isRoundTrip) {
-          finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+        // ✅ Vérifier si c'est une destination populaire (prix fixe)
+        if (selectedPopularDestination && selectedPopularDestination.address === finalArrival) {
+          // ✅ Destination populaire : utiliser le prix fixe
+          finalPrice = selectedPopularDestination.fixed_price
+          if (isRoundTrip) {
+            finalPrice = (selectedPopularDestination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+          }
+        } else {
+          // ✅ Destination normale : utiliser la tarification dégressive par paliers
+          const distanceInKm = result.distance / 1000
+          
+          // Obtenir le taux au km selon la distance totale et la catégorie
+          const ratePerKm = getRatePerKm(distanceInKm, vehicleCategory)
+          
+          // ✅ Formule : Prix = Distance_en_km * Taux_Identifié
+          let oneWayPrice = distanceInKm * ratePerKm
+          
+          // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
+          finalPrice = oneWayPrice
+          if (isRoundTrip) {
+            finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+          }
         }
         
         setCalculation({
@@ -902,12 +962,67 @@ Client: ${data.firstName} ${data.lastName}`
                   onChange={(e) => {
                     const newValue = e.target.value
                     setArrivalInput(newValue)
+                    // ✅ Réinitialiser la destination populaire si l'utilisateur modifie manuellement l'adresse
+                    if (selectedPopularDestination && newValue !== selectedPopularDestination.address) {
+                      setSelectedPopularDestination(null)
+                    }
                     // Ne pas mettre à jour arrival immédiatement - attendre le debounce
                   }}
                   className="pl-12"
                   disabled={!isMapsLoaded}
                 />
               </div>
+              
+              {/* ✅ Alerte pour destination populaire avec prix fixe */}
+              {selectedPopularDestination && (
+                <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-2 border-blue-300 rounded-xl shadow-lg animate-fade-in">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Info className="w-5 h-5 text-blue-600 animate-pulse" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
+                        <p className="font-bold text-blue-900 text-sm">
+                          {locale === 'fr' 
+                            ? '✨ Un tarif forfaitaire est disponible pour cette destination'
+                            : locale === 'ar'
+                            ? '✨ يتوفر سعر ثابت لهذه الوجهة'
+                            : '✨ A fixed rate is available for this destination'}
+                        </p>
+                      </div>
+                      <p className="text-sm text-blue-800 mb-2">
+                        <span className="font-semibold">
+                          {locale === 'fr' ? 'Prix Fixe :' : locale === 'ar' ? 'السعر الثابت:' : 'Fixed Price:'}
+                        </span>{' '}
+                        <span className="text-lg font-bold text-blue-900">
+                          {formatPrice(
+                            isRoundTrip 
+                              ? (selectedPopularDestination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+                              : selectedPopularDestination.fixed_price,
+                            locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US'
+                          )}
+                        </span>
+                        {isRoundTrip && (
+                          <span className="text-xs text-blue-600 ml-1">
+                            ({locale === 'fr' ? 'Aller-retour' : locale === 'ar' ? 'ذهاب وإياب' : 'Round trip'})
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-blue-700 flex items-center gap-1">
+                        <ArrowUp className="w-3 h-3" />
+                        <span>
+                          {locale === 'fr' 
+                            ? 'Voir la section "Destinations Populaires" ci-dessus pour plus d\'informations.'
+                            : locale === 'ar'
+                            ? 'انظر إلى قسم "الوجهات الشائعة" أعلاه لمزيد من المعلومات.'
+                            : 'See the "Popular Destinations" section above for more information.'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1036,24 +1151,20 @@ Client: ${data.firstName} ${data.lastName}`
                       <button
                         key={dest.id}
                         onClick={async () => {
+                          // ✅ Marquer cette destination comme sélectionnée (pour utiliser le prix fixe)
+                          setSelectedPopularDestination(dest)
                           setArrival(dest.address)
                           setArrivalInput(dest.address)
-                          // Calculer automatiquement le prix avec la catégorie sélectionnée
+                          
+                          // Calculer automatiquement le prix pour les destinations populaires
                           if (departure) {
                             try {
                               const result = await calculateRide(departure, dest.address)
                               if (result) {
-                                // ✅ Nouvelle logique : Calculer le prix avec le prix au km de la catégorie
-                                const pricePerKm = VEHICLE_PRICE_PER_KM[vehicleCategory]
-                                const distanceInKm = result.distance / 1000
-                                
-                                // ✅ Nouvelle formule : Prix = (Distance_en_km * Prix_du_km_de_la_catégorie) + Prise_en_charge
-                                let oneWayPrice = (distanceInKm * pricePerKm) + BASE_CHARGE
-                                
-                                // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-                                let finalPrice = oneWayPrice
+                                // ✅ Destination populaire : utiliser le prix fixe (pas de calcul au km)
+                                let finalPrice = dest.fixed_price
                                 if (isRoundTrip) {
-                                  finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+                                  finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
                                 }
                                 
                                 setCalculation({
@@ -1067,7 +1178,18 @@ Client: ${data.firstName} ${data.lastName}`
                                 }, 100)
                               }
                             } catch (err) {
-                              console.error('Error calculating price:', err)
+                              console.error('Error calculating distance:', err)
+                              // En cas d'erreur, utiliser quand même le prix fixe
+                              let finalPrice = dest.fixed_price
+                              if (isRoundTrip) {
+                                finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+                              }
+                              setCalculation({
+                                distance: 0,
+                                duration: 0,
+                                price: Math.round(finalPrice * 100) / 100,
+                              })
+                              setShowSuccess(true)
                             }
                           }
                         }}
@@ -1165,6 +1287,34 @@ Client: ${data.firstName} ${data.lastName}`
                     </span>
                   </div>
                 </div>
+                
+                {/* ✅ Alerte pour destination populaire dans le résultat */}
+                {selectedPopularDestination && (
+                  <div className="p-4 bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 border-2 border-green-300 rounded-xl shadow-md animate-fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-green-900 text-sm mb-1">
+                          {locale === 'fr' 
+                            ? '✨ Tarif forfaitaire appliqué'
+                            : locale === 'ar'
+                            ? '✨ تم تطبيق السعر الثابت'
+                            : '✨ Fixed rate applied'}
+                        </p>
+                        <p className="text-xs text-green-700">
+                          {locale === 'fr' 
+                            ? `Cette destination bénéficie d'un prix fixe de ${formatPrice(selectedPopularDestination.fixed_price, 'fr-FR')}. Voir la section "Destinations Populaires" ci-dessus.`
+                            : locale === 'ar'
+                            ? `هذه الوجهة تستفيد من سعر ثابت ${formatPrice(selectedPopularDestination.fixed_price, 'ar-SA')}. انظر إلى قسم "الوجهات الشائعة" أعلاه.`
+                            : `This destination benefits from a fixed price of ${formatPrice(selectedPopularDestination.fixed_price, 'en-US')}. See the "Popular Destinations" section above.`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {isRoundTrip && (
                   <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200 animate-fade-in">
                     <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
