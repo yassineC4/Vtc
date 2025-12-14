@@ -53,7 +53,10 @@ function calculateTimeBasedPrice(distanceInKm: number, durationInMinutes: number
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📥 POST /api/estimate - Requête reçue')
     const body = await request.json()
+    console.log('📥 POST /api/estimate - Body:', JSON.stringify(body, null, 2))
+    
     const { origin, destination, category, is_round_trip = false } = body
 
     // Validation des champs requis
@@ -91,8 +94,21 @@ export async function POST(request: NextRequest) {
     url.searchParams.set('traffic_model', 'best_guess')
     url.searchParams.set('key', apiKey)
 
+    console.log('🌐 Appel Google Maps Distance Matrix:', {
+      origin,
+      destination,
+      url: url.toString().replace(apiKey, '***KEY***'),
+    })
+
     const response = await fetch(url.toString())
     const data = await response.json()
+    
+    console.log('📥 Réponse Google Maps:', {
+      status: data.status,
+      error_message: data.error_message,
+      rows_count: data.rows?.length,
+      element_status: data.rows?.[0]?.elements?.[0]?.status,
+    })
 
     if (data.status !== 'OK' || !data.rows[0]?.elements[0]) {
       console.error('❌ Google Maps API error:', {
@@ -106,12 +122,27 @@ export async function POST(request: NextRequest) {
       let errorMessage = `Erreur Google Maps: ${data.status}`
       if (data.status === 'REQUEST_DENIED') {
         errorMessage = data.error_message || 'REQUEST_DENIED'
-        console.error('🔍 Causes possibles de REQUEST_DENIED:')
-        console.error('1. Clé API invalide ou expirée')
-        console.error('2. Restrictions HTTP referrers (domaines autorisés)')
-        console.error('3. Restrictions IP (si configurées, bloquent Vercel)')
-        console.error('4. Distance Matrix API non activée dans Google Cloud Console')
-        console.error('5. Quotas dépassés ou facturation non activée')
+        
+        // ✅ Détection spécifique de l'erreur "referer restrictions"
+        if (data.error_message?.includes('referer restrictions') || 
+            data.error_message?.includes('referrer restrictions')) {
+          console.error('❌ ERREUR SPÉCIFIQUE : Restrictions HTTP referrers détectées')
+          console.error('🔧 SOLUTION :')
+          console.error('1. Allez dans Google Cloud Console > APIs & Services > Credentials')
+          console.error('2. Cliquez sur votre clé API utilisée pour GOOGLE_MAPS_API_KEY')
+          console.error('3. Dans "Application restrictions", choisissez "None" (pas "HTTP referrers")')
+          console.error('4. OU créez une clé API séparée SANS HTTP referrers pour le serveur')
+          console.error('5. Utilisez cette nouvelle clé pour GOOGLE_MAPS_API_KEY dans Vercel')
+          console.error('6. Redéployez votre application')
+          errorMessage = 'La clé API a des restrictions HTTP referrers qui ne fonctionnent pas côté serveur. Consultez les logs pour la solution.'
+        } else {
+          console.error('🔍 Causes possibles de REQUEST_DENIED:')
+          console.error('1. Clé API invalide ou expirée')
+          console.error('2. Restrictions HTTP referrers (domaines autorisés) - PROBLÈME DÉTECTÉ')
+          console.error('3. Restrictions IP (si configurées, bloquent Vercel)')
+          console.error('4. Distance Matrix API non activée dans Google Cloud Console')
+          console.error('5. Quotas dépassés ou facturation non activée')
+        }
       }
       
       return NextResponse.json(
@@ -134,10 +165,34 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Récupérer distance et durée (priorité à duration_in_traffic si disponible)
+    if (!element.distance || !element.distance.value) {
+      console.error('❌ Distance non disponible dans la réponse Google Maps')
+      return NextResponse.json(
+        { error: 'Distance non disponible dans la réponse Google Maps' },
+        { status: 500 }
+      )
+    }
+
+    if (!element.duration || !element.duration.value) {
+      console.error('❌ Durée non disponible dans la réponse Google Maps')
+      return NextResponse.json(
+        { error: 'Durée non disponible dans la réponse Google Maps' },
+        { status: 500 }
+      )
+    }
+
     const distanceInMeters = element.distance.value // en mètres
+    // ✅ duration_in_traffic peut ne pas être disponible si facturation non activée
+    // Dans ce cas, on utilise duration normale
     const durationInSeconds = element.duration_in_traffic?.value || element.duration.value // en secondes (priorité au trafic)
     const distanceInKm = distanceInMeters / 1000 // convertir mètres en km
     const durationInMinutes = durationInSeconds / 60 // convertir secondes en minutes
+
+    console.log('✅ Données extraites:', {
+      distanceInKm: distanceInKm.toFixed(2),
+      durationInMinutes: durationInMinutes.toFixed(2),
+      hasTrafficData: !!element.duration_in_traffic,
+    })
 
     // ✅ A. CALCUL FORFAIT (ZONES) - VTC SOLO
     let priceForfait: number
@@ -197,9 +252,24 @@ export async function POST(request: NextRequest) {
       traffic_surcharge,
     })
   } catch (error) {
-    console.error('❌ Erreur lors de l\'estimation:', error)
+    console.error('❌ Erreur lors de l\'estimation:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      body: request.body ? 'Body received' : 'No body',
+    })
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Erreur inconnue lors de l\'estimation'
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erreur inconnue lors de l\'estimation' },
+      { 
+        error: errorMessage,
+        details: error instanceof Error && error.stack 
+          ? error.stack.split('\n').slice(0, 3).join('\n')
+          : undefined,
+      },
       { status: 500 }
     )
   }

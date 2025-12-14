@@ -1,4 +1,8 @@
-# 🔍 Résolution de l'erreur REQUEST_DENIED - Google Maps API
+# 🔍 Résolution des erreurs Google Maps API
+
+## ❌ Erreur : "API keys with referer restrictions cannot be used with this API"
+
+Cette erreur signifie que votre clé API a des restrictions HTTP referrers, mais vous l'utilisez pour des appels côté serveur (API routes Next.js).
 
 ## ❌ Erreur : `REQUEST_DENIED`
 

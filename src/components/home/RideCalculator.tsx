@@ -351,10 +351,23 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Erreur API (${response.status})`)
+        const errorMessage = errorData.error || errorData.details || `Erreur API (${response.status})`
+        console.error('❌ Erreur API /api/estimate:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          requestBody: {
+            origin: finalDeparture,
+            destination: finalArrival,
+            category: vehicleCategory,
+            is_round_trip: isRoundTrip,
+          },
+        })
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
+      console.log('✅ Réponse API /api/estimate:', result)
       
       // ✅ L'API retourne des strings formatées (distance: "15.5 km", duration: "45 min")
       // On doit les convertir en valeurs numériques pour le calcul interne
@@ -417,12 +430,27 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       console.error('❌ Erreur lors de l\'estimation:', {
         message: errorMessage,
         details: errorDetails,
+        error: err,
         departure: finalDeparture,
         arrival: finalArrival,
+        category: vehicleCategory,
+        is_round_trip: isRoundTrip,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
       })
       
-      setApiError(errorMessage)
+      // Afficher un message d'erreur plus détaillé à l'utilisateur
+      let userFriendlyError = errorMessage
+      if (errorMessage.includes('REQUEST_DENIED') || errorMessage.includes('Google Maps')) {
+        userFriendlyError = locale === 'fr'
+          ? 'Erreur de configuration Google Maps. Veuillez contacter le support.'
+          : 'Google Maps configuration error. Please contact support.'
+      } else if (errorMessage.includes('Configuration serveur')) {
+        userFriendlyError = locale === 'fr'
+          ? 'Erreur de configuration serveur. Veuillez réessayer plus tard.'
+          : 'Server configuration error. Please try again later.'
+      }
+      
+      setApiError(userFriendlyError)
       setRetryCount(prev => prev + 1)
     } finally {
       setApiLoading(false)
