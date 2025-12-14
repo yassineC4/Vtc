@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGoogleMapsAutocomplete } from '@/hooks/useGoogleMaps'
-import { useRideCalculator } from '@/hooks/useRideCalculator'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/utils'
 import { getTranslations, type Locale } from '@/lib/i18n'
@@ -141,7 +140,8 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const debouncedDeparture = useDebounce(departureInput, 1500)
   const debouncedArrival = useDebounce(arrivalInput, 1500)
 
-  const { calculateRide, loading, error } = useRideCalculator()
+  const [apiLoading, setApiLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   const { requestLocation, loading: geolocationLoading, error: geolocationError, address: currentAddress, reset: resetGeolocation } = useGeolocation()
 
   const handleDepartureSelect = useCallback((place: google.maps.places.PlaceResult) => {
@@ -333,95 +333,99 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       setArrival(arrivalInput)
     }
     
+    setApiLoading(true)
+    setApiError(null)
+    
     try {
-      const result = await calculateRide(finalDeparture, finalArrival)
-      if (result) {
-        // Calculer la distance en km et la durée en minutes
-        const distanceInKm = result.distance / 1000
-        const durationInMinutes = result.duration / 60
-        
-        // ✅ Prix A : Forfait Distance (Tarification Zonale)
-        let priceBasedOnDistance = calculateZonalPrice(distanceInKm, vehicleCategory)
-        
-        // ✅ Prix B : Temps Réel (Sécurité Trafic)
-        let priceBasedOnTime = calculateTimeBasedPrice(distanceInKm, durationInMinutes)
-        
-        // ✅ Arbitrage : Prendre le maximum (le plus rentable/protectif)
-        let oneWayPrice = Math.max(priceBasedOnDistance, priceBasedOnTime)
-        
-        // Détecter si le trafic est la cause de la majoration
-        const isTrafficSurcharge = priceBasedOnTime > priceBasedOnDistance
-        
-        // ✅ Gestion de l'approche (simulation : pour l'instant, on laisse à 0)
-        // TODO: Implémenter le calcul réel de distance chauffeur -> départ client avec Google Distance Matrix
-        let approachSurcharge = 0
-        // Si on a une position actuelle (chauffeur) et un départ, on pourrait calculer la distance
-        // Pour l'instant, on laisse à 0 (à implémenter)
-        
-        // Appliquer majoration si aller-retour : prix * 2
-        let finalPrice = oneWayPrice + approachSurcharge
-        if (isRoundTrip) {
-          finalPrice = (oneWayPrice * 2) + approachSurcharge
-        }
-        
-        setCalculation({
-          ...result,
-          price: Math.round(finalPrice * 100) / 100,
-          priceBasedOnDistance: Math.round(priceBasedOnDistance * 100) / 100,
-          priceBasedOnTime: Math.round(priceBasedOnTime * 100) / 100,
-          isTrafficSurcharge,
-          approachSurcharge,
-        })
-        setShowSuccess(true)
-        setRetryCount(0)
-        
-        // Scroll vers le résultat (compatible Safari - fallback si smooth ne marche pas)
-        setTimeout(() => {
-          const resultElement = document.getElementById('calculation-result')
-          if (resultElement) {
+      // ✅ Appel à la route API /api/estimate
+      const response = await fetch('/api/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: finalDeparture,
+          destination: finalArrival,
+          category: vehicleCategory,
+          is_round_trip: isRoundTrip,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Erreur API (${response.status})`)
+      }
+
+      const result = await response.json()
+      
+      // ✅ L'API retourne des strings formatées (distance: "15.5 km", duration: "45 min")
+      // On doit les convertir en valeurs numériques pour le calcul interne
+      // distance est en format "15.5 km" ou "500 m"
+      const distanceMatch = result.distance.match(/([\d.]+)\s*(km|m)/)
+      const distanceInMeters = distanceMatch 
+        ? distanceMatch[2] === 'km' 
+          ? Math.round(parseFloat(distanceMatch[1]) * 1000)
+          : Math.round(parseFloat(distanceMatch[1]))
+        : 0
+      
+      // duration est en format "45 min" ou "1h 30min"
+      const durationMatch = result.duration.match(/(?:(\d+)h\s*)?(\d+)\s*min/)
+      const durationInSeconds = durationMatch
+        ? (parseInt(durationMatch[1] || '0') * 60 + parseInt(durationMatch[2])) * 60
+        : 0
+      
+      // ✅ Gestion de l'approche (simulation : pour l'instant, on laisse à 0)
+      // TODO: Implémenter le calcul réel de distance chauffeur -> départ client avec Google Distance Matrix
+      let approachSurcharge = 0
+      
+      setCalculation({
+        distance: distanceInMeters, // en mètres
+        duration: durationInSeconds, // en secondes
+        price: result.price,
+        priceBasedOnDistance: 0, // Non retourné par l'API (calculé côté serveur)
+        priceBasedOnTime: 0, // Non retourné par l'API (calculé côté serveur)
+        isTrafficSurcharge: result.traffic_surcharge,
+        approachSurcharge,
+      })
+      setShowSuccess(true)
+      setRetryCount(0)
+      
+      // Scroll vers le résultat (compatible Safari - fallback si smooth ne marche pas)
+      setTimeout(() => {
+        const resultElement = document.getElementById('calculation-result')
+        if (resultElement) {
+          try {
+            // Essayer smooth scroll (Chrome, Firefox)
+            resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          } catch (scrollError) {
+            // Fallback pour Safari qui peut avoir des problèmes avec smooth
             try {
-              // Essayer smooth scroll (Chrome, Firefox)
-              resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-            } catch (scrollError) {
-              // Fallback pour Safari qui peut avoir des problèmes avec smooth
-              try {
-                resultElement.scrollIntoView({ block: 'nearest' })
-              } catch (fallbackError) {
-                // Dernier recours : scroll manuel
-                window.scrollTo({
-                  top: resultElement.offsetTop - 100,
-                  behavior: 'smooth',
-                })
-              }
+              resultElement.scrollIntoView({ block: 'nearest' })
+            } catch (fallbackError) {
+              // Dernier recours : scroll manuel
+              window.scrollTo({
+                top: resultElement.offsetTop - 100,
+                behavior: 'smooth',
+              })
             }
           }
-        }, 100)
-      } else {
-        setRetryCount(prev => prev + 1)
-      }
+        }
+      }, 100)
     } catch (err) {
-      // ✅ Logs explicites pour Safari (visible même si console fermée via alert temporaire en dev)
+      // ✅ Logs explicites pour le debug
       const errorMessage = err instanceof Error ? err.message : String(err)
       const errorDetails = err instanceof Error ? err.stack : 'No stack trace'
       
-      console.error('❌ SAFARI DEBUG - Calculation error:', {
+      console.error('❌ Erreur lors de l\'estimation:', {
         message: errorMessage,
         details: errorDetails,
         departure: finalDeparture,
         arrival: finalArrival,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-        isSafari: typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
       })
       
-      // En développement, afficher une alerte pour Safari (à retirer en prod)
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-        if (isSafari) {
-          console.warn('⚠️ Safari détecté - Erreur:', errorMessage)
-        }
-      }
-      
+      setApiError(errorMessage)
       setRetryCount(prev => prev + 1)
+    } finally {
+      setApiLoading(false)
     }
   }
 
@@ -965,11 +969,11 @@ Client: ${data.firstName} ${data.lastName}`
 
           <Button
             onClick={handleCalculate}
-            disabled={loading || (!departure && !departureInput) || (!arrival && !arrivalInput)}
+            disabled={apiLoading || (!departure && !departureInput) || (!arrival && !arrivalInput)}
             className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
-            {loading ? (
+            {apiLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {t.common.loading}
@@ -983,10 +987,10 @@ Client: ${data.firstName} ${data.lastName}`
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
           </Button>
 
-          {error && retryCount > 0 && (
+          {apiError && retryCount > 0 && (
             <div className="p-4 text-sm text-destructive bg-red-50 border-2 border-red-100 rounded-xl animate-fade-in">
               <div className="flex items-center justify-between">
-                <p>{error}</p>
+                <p>{apiError}</p>
                 {retryCount < 3 && (
                   <Button
                     variant="outline"
