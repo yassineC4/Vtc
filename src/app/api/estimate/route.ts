@@ -53,8 +53,10 @@ function calculateTimeBasedPrice(distanceInKm: number, durationInMinutes: number
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('--> API APPELÉE')
     console.log('📥 POST /api/estimate - Requête reçue')
     const body = await request.json()
+    console.log('Body:', body)
     console.log('📥 POST /api/estimate - Body:', JSON.stringify(body, null, 2))
     
     const { origin, destination, category, is_round_trip = false } = body
@@ -102,6 +104,9 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(url.toString())
     const data = await response.json()
+    
+    // ✅ LOG RÉPONSE BRUTE GOOGLE MAPS AVANT TRAITEMENT
+    console.log('--> RÉPONSE BRUTE GOOGLE MAPS:', JSON.stringify(data, null, 2))
     
     console.log('📥 Réponse Google Maps:', {
       status: data.status,
@@ -252,6 +257,7 @@ export async function POST(request: NextRequest) {
       traffic_surcharge,
     })
   } catch (error) {
+    console.error('--> ERREUR DANS API:', error)
     console.error('❌ Erreur lors de l\'estimation:', {
       error,
       message: error instanceof Error ? error.message : String(error),
@@ -266,9 +272,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: errorMessage,
-        details: error instanceof Error && error.stack 
-          ? error.stack.split('\n').slice(0, 3).join('\n')
-          : undefined,
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     )

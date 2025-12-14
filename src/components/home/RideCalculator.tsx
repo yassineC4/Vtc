@@ -367,7 +367,16 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       }
 
       const result = await response.json()
+      console.log('Réponse API:', result)
       console.log('✅ Réponse API /api/estimate:', result)
+      
+      // ✅ Afficher une alerte si erreur détectée
+      if (result.error) {
+        alert(`Erreur API: ${result.error}${result.details ? '\n\nDétails: ' + result.details : ''}`)
+        setApiError(result.error)
+        setApiLoading(false)
+        return
+      }
       
       // ✅ L'API retourne des strings formatées (distance: "15.5 km", duration: "45 min")
       // On doit les convertir en valeurs numériques pour le calcul interne
