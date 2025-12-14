@@ -136,14 +136,14 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [apiError, setApiError] = useState<string | null>(null)
   const { requestLocation, loading: geolocationLoading, error: geolocationError, address: currentAddress, reset: resetGeolocation } = useGeolocation()
 
-  const handleDepartureSelect = useCallback((place: google.maps.places.PlaceResult) => {
+  const handleDepartureSelect = useCallback((place: any) => {
     if (place.formatted_address) {
       setDeparture(place.formatted_address)
       setDepartureInput(place.formatted_address)
     }
   }, [])
 
-  const handleArrivalSelect = useCallback((place: google.maps.places.PlaceResult) => {
+  const handleArrivalSelect = useCallback((place: any) => {
     if (place.formatted_address) {
       setArrival(place.formatted_address)
       setArrivalInput(place.formatted_address)
