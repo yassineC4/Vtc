@@ -48,13 +48,10 @@ next-env.d.ts
 # OS
 Thumbs.db
 
-# Documentation temporaire/debug (garder seulement les versions finales)
-# Les fichiers suivants sont gardés :
+# Documentation (fichiers gardés)
 # - README.md
 # - DEPLOYMENT.md
 # - FLUX_WHATSAPP.md
-# - RAPPORT_FONCTIONNALITES_COMPLET.md (version finale)
-# - AUDIT_SECURITE_COMPLET_V2.md (version finale)
 # - supabase-schema.sql
 # - fix-rls-policies.sql
 

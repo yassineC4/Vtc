@@ -47,13 +47,6 @@ export function validatePrice(price: number | string): boolean {
 }
 
 /**
- * Valide un nombre de passagers (1-8)
- */
-export function validatePassengers(count: number): boolean {
-  return Number.isInteger(count) && count >= 1 && count <= 8
-}
-
-/**
  * Valide les valeurs enum pour ride_type
  */
 export function validateRideType(type: string): type is 'immediate' | 'reservation' {

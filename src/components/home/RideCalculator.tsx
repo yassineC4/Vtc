@@ -4,17 +4,16 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useGoogleMapsAutocomplete } from '@/hooks/useGoogleMaps'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/utils'
 import { getTranslations, type Locale } from '@/lib/i18n'
-import { useDebounce, debounce } from '@/lib/debounce'
-import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER, formatPhoneForWhatsApp } from '@/lib/whatsapp'
+import { useDebounce } from '@/lib/debounce'
+import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
-import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, Car, Crown, Users, Gem } from 'lucide-react'
+import { Calendar, Clock, MapPin, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, Car, Crown, Users, Gem } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface RideCalculatorProps {
@@ -24,13 +23,6 @@ interface RideCalculatorProps {
 
 type RideType = 'immediate' | 'reservation'
 type VehicleCategory = 'standard' | 'berline' | 'van'
-
-// ✅ PARAMÈTRES DE BASE (Ajustables)
-const RATE_PER_MINUTE = 0.50 // Pour compenser le temps passé dans les bouchons
-const MIN_PRICE_STANDARD = 15 // Prix minimum pour Standard
-const MIN_PRICE_VAN = 25 // Prix minimum pour Van/Berline
-const APPROACH_DISTANCE_THRESHOLD = 10 // Distance en km au-delà de laquelle on ajoute un supplément
-const APPROACH_SURCHARGE = 10 // Supplément en € pour approche lointaine
 
 // ✅ NOUVELLE LOGIQUE : Tarification zonale (Zonal Pricing) - MODIFIÉE
 // STANDARD :
@@ -485,7 +477,6 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   }
 
   const handleReservationConfirm = async (data: ReservationData) => {
-    // 🔒 Protection contre les doubles clics (race condition)
     if (isSubmitting || !calculation || !departure || !arrival) return
 
     // Valider à nouveau la date/heure avant confirmation
@@ -497,21 +488,18 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       }
     }
 
-    setIsBooking(true)
-    setIsSubmitting(true) // 🔒 Blocage immédiat
+    setIsSubmitting(true)
     setDateTimeError(null)
 
     try {
       // Construire la date/heure programmée
-      let scheduledDate: string | null = null
       let formattedDateTime = ''
       if (rideType === 'reservation' && date && time) {
         const [year, month, day] = date.split('-').map(Number)
         const [hours, minutes] = time.split(':').map(Number)
         const bookingDate = new Date(year, month - 1, day, hours, minutes)
-        scheduledDate = bookingDate.toISOString()
         
-        // Formater la date pour le message WhatsApp (compatible Safari)
+        // Formater la date pour le message WhatsApp
         try {
           formattedDateTime = bookingDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
             weekday: 'long',
@@ -523,7 +511,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
             minute: '2-digit',
           })
         } catch (formatError) {
-          // Fallback si toLocaleDateString/toLocaleTimeString échouent (Safari iOS parfois)
+          // Fallback si toLocaleDateString/toLocaleTimeString échouent
           const dayNames = locale === 'fr' 
             ? ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
             : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -546,107 +534,86 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         formattedDateTime = locale === 'fr' ? 'Immédiatement' : 'Immediately'
       }
 
-      // Créer la réservation dans la base de données
-      const bookingData = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        email: data.email || null,
-        phone: data.phone || null,
-        departure_address: departure,
-        arrival_address: arrival,
-        scheduled_date: scheduledDate,
-        ride_type: rideType,
-        vehicle_category: vehicleCategory,
-        is_round_trip: isRoundTrip,
-        number_of_passengers: data.numberOfPassengers,
-        baby_seat: data.babySeat,
-        payment_method: data.paymentMethod,
-        estimated_price: calculation.price,
-        estimated_distance: calculation.distance,
-        estimated_duration: calculation.duration,
-        // Le statut sera défini côté serveur (confirmed pour VTC Solo)
-      }
-
-      console.log('📤 Envoi de la réservation:', bookingData)
-
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingData),
-      })
-
-      console.log('📥 Réponse API:', response.status, response.statusText)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Erreur API:', errorData)
-        throw new Error(errorData.error || `Failed to create booking (${response.status})`)
-      }
-
-      // Vérifier que la réponse contient bien les données de la réservation créée
-      const result = await response.json()
-      console.log('✅ Résultat API:', result)
+      // Construire le message WhatsApp avec toutes les informations
+      const vehicleCategoryText = locale === 'fr'
+        ? (vehicleCategory === 'standard' ? 'Standard' : vehicleCategory === 'berline' ? 'Berline' : 'Van')
+        : vehicleCategory
       
-      if (!result.data || !result.data.id) {
-        console.error('❌ Pas de données retournées:', result)
-        throw new Error('Booking was not created successfully - No data returned')
-      }
+      const roundTripText = isRoundTrip 
+        ? (locale === 'fr' ? 'Aller-retour' : 'Round trip')
+        : (locale === 'fr' ? 'Aller simple' : 'One way')
       
-      console.log('✅ Réservation créée avec ID:', result.data.id)
+      const paymentMethodText = data.paymentMethod === 'cash'
+        ? (locale === 'fr' ? 'Espèces' : 'Cash')
+        : (locale === 'fr' ? 'Carte' : 'Card')
+      
+      const babySeatText = data.babySeat
+        ? (locale === 'fr' ? 'Oui' : 'Yes')
+        : (locale === 'fr' ? 'Non' : 'No')
 
-      setReservationData(data)
-      setIsBooking(false)
-      setIsSubmitting(false) // 🔓 Déblocage après succès
-      
-      // ✅ SÉQUENCE CORRECTE : WhatsApp s'ouvre APRÈS la confirmation de l'insertion en DB
-      // Générer le message WhatsApp pour l'admin
       const adminMessage = locale === 'fr'
-        ? `Bonjour, je viens de faire une demande de réservation sur le site.
+        ? `Bonjour, je souhaite réserver une course.
 
-Trajet : ${departure} ➔ ${arrival}
+📍 Départ : ${departure}
+📍 Arrivée : ${arrival}
+💰 Prix estimé : ${formatPrice(calculation.price, 'fr-FR')}
+📏 Distance : ${calculation.distance ? formatDistance(calculation.distance, locale) : 'N/A'}
+⏱️ Durée : ${calculation.duration ? formatDuration(calculation.duration, locale) : 'N/A'}
 
-Date : ${formattedDateTime}
+👤 Client : ${data.firstName} ${data.lastName}
+📞 Téléphone : ${data.phone || 'Non fourni'}
+📧 Email : ${data.email || 'Non fourni'}
 
-Client : ${data.firstName} ${data.lastName}`
-        : `Hello, I just made a reservation request on the website.
+🚗 Catégorie : ${vehicleCategoryText}
+🔄 Type : ${roundTripText}
+👥 Passagers : ${data.numberOfPassengers}
+👶 Siège bébé : ${babySeatText}
+💳 Paiement : ${paymentMethodText}
+📅 Date/Heure : ${formattedDateTime}`
+        : `Hello, I would like to book a ride.
 
-Route: ${departure} ➔ ${arrival}
+📍 Departure: ${departure}
+📍 Arrival: ${arrival}
+💰 Estimated price: ${formatPrice(calculation.price, 'en-US')}
+📏 Distance: ${calculation.distance ? formatDistance(calculation.distance, locale) : 'N/A'}
+⏱️ Duration: ${calculation.duration ? formatDuration(calculation.duration, locale) : 'N/A'}
 
-Date: ${formattedDateTime}
+👤 Client: ${data.firstName} ${data.lastName}
+📞 Phone: ${data.phone || 'Not provided'}
+📧 Email: ${data.email || 'Not provided'}
 
-Client: ${data.firstName} ${data.lastName}`
+🚗 Category: ${vehicleCategoryText}
+🔄 Type: ${roundTripText}
+👥 Passengers: ${data.numberOfPassengers}
+👶 Baby seat: ${babySeatText}
+💳 Payment: ${paymentMethodText}
+📅 Date/Time: ${formattedDateTime}`
       
-      // Ouvrir WhatsApp vers le numéro admin
+      // Ouvrir WhatsApp directement
       const whatsappUrl = createWhatsAppUrl(whatsappNumber || DEFAULT_PHONE_NUMBER, adminMessage)
       window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
       
-      // Afficher une modale de succès
+      setIsSubmitting(false)
+      setShowReservationForm(false)
+      setReservationData(null)
+      
+      // Message de succès
       const successMessage = locale === 'fr'
-        ? `✅ Demande enregistrée ! Veuillez envoyer le message WhatsApp qui vient de s'ouvrir pour finaliser la demande.`
+        ? '✅ WhatsApp s\'est ouvert avec votre demande. Veuillez envoyer le message pour finaliser votre réservation.'
         : locale === 'ar'
-        ? `✅ تم تسجيل الطلب! يرجى إرسال رسالة واتساب التي تم فتحها للتو لإنهاء الطلب.`
-        : `✅ Request saved! Please send the WhatsApp message that just opened to finalize your request.`
+        ? '✅ تم فتح واتساب مع طلبك. يرجى إرسال الرسالة لإنهاء الحجز.'
+        : '✅ WhatsApp has opened with your request. Please send the message to finalize your booking.'
       
       alert(successMessage)
     } catch (error) {
-      console.error('❌ Erreur lors de la création de la réservation:', error)
-      setIsBooking(false)
-      setIsSubmitting(false) // 🔓 Déblocage après erreur
+      console.error('Error opening WhatsApp:', error)
+      setIsSubmitting(false)
       
-      // Afficher un message d'erreur détaillé pour le debug
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : (locale === 'fr'
-          ? 'Erreur lors de la création de la réservation. Veuillez réessayer.'
-          : locale === 'ar'
-          ? 'خطأ في إنشاء الحجز. يرجى المحاولة مرة أخرى.'
-          : 'Error creating booking. Please try again.')
+      const errorMessage = locale === 'fr'
+        ? 'Erreur lors de l\'ouverture de WhatsApp. Veuillez réessayer.'
+        : 'Error opening WhatsApp. Please try again.'
       
-      const fullErrorMessage = locale === 'fr'
-        ? `Erreur : ${errorMessage}\n\nVérifiez la console du navigateur (F12) et les logs serveur pour plus de détails.`
-        : `Error: ${errorMessage}\n\nCheck the browser console (F12) and server logs for more details.`
-      
-      alert(fullErrorMessage)
+      alert(errorMessage)
     }
   }
 
