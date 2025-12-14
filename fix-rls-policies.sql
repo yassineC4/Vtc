@@ -59,3 +59,4 @@ CREATE POLICY "No direct delete access to drivers"
 -- Note: Ces politiques bloquent tout accès direct. 
 -- Seul le service_role (via votre API avec createAdminClient) peut accéder à ces données.
 
+

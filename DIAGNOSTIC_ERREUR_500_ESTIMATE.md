@@ -90,3 +90,4 @@ Le code affiche maintenant des logs détaillés :
 
 Consultez ces logs dans Vercel pour identifier le problème exact.
 
+

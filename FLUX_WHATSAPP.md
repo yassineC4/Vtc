@@ -195,3 +195,4 @@ La table `bookings` contient :
 - [ ] Support de WhatsApp Business API pour l'envoi automatique
 
 
+

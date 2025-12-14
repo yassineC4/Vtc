@@ -74,3 +74,4 @@ export function validatePaymentMethod(method: string): method is 'cash' | 'card'
   return method === 'cash' || method === 'card'
 }
 
+

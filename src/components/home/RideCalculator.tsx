@@ -1015,7 +1015,7 @@ Client: ${data.firstName} ${data.lastName}`
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
           </Button>
 
-          {apiError && retryCount > 0 && (
+          {apiError && (
             <div className="p-4 text-sm text-destructive bg-red-50 border-2 border-red-100 rounded-xl animate-fade-in">
               <div className="flex items-center justify-between">
                 <p>{apiError}</p>

@@ -63,3 +63,4 @@ Si vous préférez une seule clé (moins sécurisé) :
 
 Cette solution fonctionne mais est moins sécurisée car la clé côté client n'a pas de restrictions de domaine.
 
+

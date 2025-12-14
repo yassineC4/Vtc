@@ -56,15 +56,28 @@ export function useGoogleMapsAutocomplete(
       !autocompleteRef.current &&
       !isInitializedRef.current
     ) {
-      // Fonction pour initialiser Autocomplete
+      // Fonction pour initialiser Autocomplete avec vérification robuste
       const tryInit = () => {
-        if (inputRef.current && !autocompleteRef.current && !isInitializedRef.current) {
+        // ✅ Vérifications supplémentaires pour éviter "Element not found"
+        if (!inputRef.current || !document.contains(inputRef.current)) {
+          console.warn('Google Maps Autocomplete: Input element not found or not in DOM')
+          return false
+        }
+
+        if (autocompleteRef.current || isInitializedRef.current) {
+          return false
+        }
+
+        try {
           const autocomplete = initAutocomplete(inputRef.current, handlePlaceSelected)
           if (autocomplete) {
             autocompleteRef.current = autocomplete
             isInitializedRef.current = true
             return true
           }
+        } catch (error) {
+          console.error('Error initializing Autocomplete:', error)
+          return false
         }
         return false
       }
