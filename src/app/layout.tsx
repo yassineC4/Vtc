@@ -13,6 +13,9 @@ const siteDescription = 'Service de transport VTC de qualité avec véhicules ha
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: '/icon.svg',
+  },
   title: {
     default: siteName,
     template: `%s | ${siteName}`,

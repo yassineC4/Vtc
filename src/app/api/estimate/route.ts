@@ -95,9 +95,31 @@ export async function POST(request: NextRequest) {
     const data = await response.json()
 
     if (data.status !== 'OK' || !data.rows[0]?.elements[0]) {
-      console.error('❌ Google Maps API error:', data.status, data)
+      console.error('❌ Google Maps API error:', {
+        status: data.status,
+        error_message: data.error_message,
+        data,
+        apiKeyPrefix: apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT SET',
+      })
+      
+      // Message d'erreur détaillé selon le type d'erreur
+      let errorMessage = `Erreur Google Maps: ${data.status}`
+      if (data.status === 'REQUEST_DENIED') {
+        errorMessage = data.error_message || 'REQUEST_DENIED'
+        console.error('🔍 Causes possibles de REQUEST_DENIED:')
+        console.error('1. Clé API invalide ou expirée')
+        console.error('2. Restrictions HTTP referrers (domaines autorisés)')
+        console.error('3. Restrictions IP (si configurées, bloquent Vercel)')
+        console.error('4. Distance Matrix API non activée dans Google Cloud Console')
+        console.error('5. Quotas dépassés ou facturation non activée')
+      }
+      
       return NextResponse.json(
-        { error: `Erreur Google Maps: ${data.status}` },
+        { 
+          error: errorMessage,
+          status: data.status,
+          details: data.error_message || 'Vérifiez la console serveur pour plus de détails'
+        },
         { status: 500 }
       )
     }
