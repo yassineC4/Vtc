@@ -304,7 +304,10 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     const finalDeparture = departure || departureInput
     const finalArrival = arrival || arrivalInput
     
+    console.log('🔍 handleCalculate appelé:', { finalDeparture, finalArrival, vehicleCategory, isRoundTrip })
+    
     if (!finalDeparture || !finalArrival) {
+      console.warn('⚠️ Champs vides:', { finalDeparture, finalArrival })
       // Animation de shake sur les champs vides
       const inputs = document.querySelectorAll('input[type="text"]')
       inputs.forEach((input) => {
@@ -329,17 +332,23 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     setApiError(null)
     
     try {
+      const requestBody = {
+        origin: finalDeparture,
+        destination: finalArrival,
+        category: vehicleCategory,
+        is_round_trip: isRoundTrip,
+      }
+      
+      console.log('📤 Envoi requête API /api/estimate:', requestBody)
+      
       // ✅ Appel à la route API /api/estimate
       const response = await fetch('/api/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          origin: finalDeparture,
-          destination: finalArrival,
-          category: vehicleCategory,
-          is_round_trip: isRoundTrip,
-        }),
+        body: JSON.stringify(requestBody),
       })
+      
+      console.log('📥 Réponse reçue:', { status: response.status, statusText: response.statusText, ok: response.ok })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -359,16 +368,31 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       }
 
       const result = await response.json()
-      console.log('Réponse API:', result)
-      console.log('✅ Réponse API /api/estimate:', result)
+      console.log('📦 Données JSON reçues:', result)
       
       // ✅ Afficher une alerte si erreur détectée
       if (result.error) {
-        alert(`Erreur API: ${result.error}${result.details ? '\n\nDétails: ' + result.details : ''}`)
+        console.error('❌ Erreur dans la réponse:', result.error, result.details)
+        const errorMsg = `Erreur API: ${result.error}${result.details ? '\n\nDétails: ' + result.details : ''}`
+        alert(errorMsg)
         setApiError(result.error)
         setApiLoading(false)
         return
       }
+      
+      // Vérifier que les données essentielles sont présentes
+      if (!result.price || !result.distance || !result.duration) {
+        console.error('❌ Données manquantes dans la réponse:', result)
+        const errorMsg = locale === 'fr' 
+          ? 'La réponse de l\'API est incomplète. Veuillez réessayer.'
+          : 'API response is incomplete. Please try again.'
+        alert(errorMsg)
+        setApiError(errorMsg)
+        setApiLoading(false)
+        return
+      }
+      
+      console.log('✅ Données valides reçues:', { price: result.price, distance: result.distance, duration: result.duration })
       
       // ✅ L'API retourne des strings formatées (distance: "15.5 km", duration: "45 min")
       // On doit les convertir en valeurs numériques pour le calcul interne
