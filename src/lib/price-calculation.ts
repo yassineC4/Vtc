@@ -1,22 +1,44 @@
 /**
  * Calcul du prix côté serveur pour validation
+ * ✅ LOGIQUE HYBRIDE : Max entre "Forfait Kilométrique" et "Tarification Temps"
  */
 
-const VEHICLE_FIXED_PRICES: Record<string, number> = {
-  standard: 2,
-  berline: 3,
-  van: 3,
+// ✅ Fonction de calcul du prix zonale (identique à RideCalculator.tsx)
+function calculateZonalPrice(distanceInKm: number, category: 'standard' | 'berline' | 'van'): number {
+  if (category === 'standard') {
+    // STANDARD
+    if (distanceInKm <= 3) {
+      return 15 // Zone 1 : Forfait fixe
+    } else if (distanceInKm <= 7) {
+      return 25 // Zone 2 : Forfait fixe
+    } else {
+      // Zone 3 : 25€ + (Distance - 7) * 1.90€
+      return 25 + ((distanceInKm - 7) * 1.90)
+    }
+  } else {
+    // BERLINE & VAN
+    if (distanceInKm <= 3) {
+      return 25 // Zone 1 : 25€ fixe
+    } else if (distanceInKm <= 7) {
+      return 35 // Zone 2 : 35€ fixe
+    } else {
+      // Zone 3 : 35€ + (Distance - 7) * 3.50€
+      return 35 + ((distanceInKm - 7) * 3.50)
+    }
+  }
 }
 
-const ROUND_TRIP_PREMIUM_FEE = 0.10
-const MINIMUM_PRICE = 15
+// ✅ Prix basé sur le temps réel (Sécurité Trafic)
+function calculateTimeBasedPrice(distanceInKm: number, durationInMinutes: number): number {
+  return (distanceInKm * 1.10) + (durationInMinutes * 0.80)
+}
 
 interface PriceCalculationParams {
   departure_address: string
   arrival_address: string
   vehicle_category: 'standard' | 'berline' | 'van'
   is_round_trip: boolean
-  price_per_km: number
+  price_per_km: number // Plus utilisé pour la tarification zonale, mais gardé pour compatibilité
 }
 
 /**
@@ -53,23 +75,23 @@ export async function calculatePriceServerSide(
     throw new Error(`Route calculation failed: ${element.status}`)
   }
 
-  // Calculer le prix de base
+  // ✅ LOGIQUE HYBRIDE : Calculer le prix avec tarification zonale ET temps réel, prendre le max
   const distanceInKm = element.distance.value / 1000 // convertir mètres en km
-  let price = distanceInKm * price_per_km
+  const durationInMinutes = element.duration.value / 60 // convertir secondes en minutes
+  
+  // Prix A : Forfait Distance (Tarification Zonale)
+  const priceBasedOnDistance = calculateZonalPrice(distanceInKm, vehicle_category)
+  
+  // Prix B : Temps Réel (Sécurité Trafic)
+  const priceBasedOnTime = calculateTimeBasedPrice(distanceInKm, durationInMinutes)
+  
+  // Arbitrage : Prendre le maximum (le plus rentable/protectif)
+  let oneWayPrice = Math.max(priceBasedOnDistance, priceBasedOnTime)
 
-  // Tarif minimum
-  if (price < MINIMUM_PRICE) {
-    price = MINIMUM_PRICE
-  }
-
-  // Ajouter le prix fixe selon la catégorie de véhicule
-  const fixedPrice = VEHICLE_FIXED_PRICES[vehicle_category] || 2
-  let oneWayPrice = price + fixedPrice
-
-  // Appliquer majoration si aller-retour
+  // Appliquer majoration si aller-retour (prix * 2)
   let finalPrice = oneWayPrice
   if (is_round_trip) {
-    finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+    finalPrice = oneWayPrice * 2
   }
 
   // Arrondir à 2 décimales

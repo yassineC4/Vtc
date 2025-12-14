@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       estimated_price: Number(body.estimated_price),
       estimated_distance: body.estimated_distance ? Number(body.estimated_distance) : null,
       estimated_duration: body.estimated_duration ? Number(body.estimated_duration) : null,
-      status: body.status || 'pending',
+      status: 'confirmed', // ✅ VTC Solo : Toutes les réservations sont confirmées directement (pas d'assignation de chauffeur)
     }
 
     // ✅ Validation estimated_distance (positif, max 10000 km = 10 000 000 m)

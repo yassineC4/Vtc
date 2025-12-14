@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { HeroSection } from '@/components/home/HeroSection'
 import { RideCalculator } from '@/components/home/RideCalculator'
-import { PopularDestinations } from '@/components/home/PopularDestinations'
 import { ReviewsSection } from '@/components/home/ReviewsSection'
 import { ValueProposition } from '@/components/home/ValueProposition'
 import { OtherServices } from '@/components/home/OtherServices'
@@ -153,11 +152,6 @@ export function HomePageClient() {
         
         {/* Section Value Proposition - Pourquoi nous choisir */}
         <ValueProposition />
-
-        {/* Section Destinations Populaires */}
-        <div id="popular-destinations">
-          <PopularDestinations locale={locale} />
-        </div>
 
         <section id="ride-calculator" className="py-24 px-4">
           <div className="container mx-auto max-w-6xl">

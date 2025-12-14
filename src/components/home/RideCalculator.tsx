@@ -15,9 +15,8 @@ import { getTranslations, type Locale } from '@/lib/i18n'
 import { useDebounce, debounce } from '@/lib/debounce'
 import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER, formatPhoneForWhatsApp } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
-import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, TrendingUp, Car, Crown, Users, Gem, Info, ArrowUp } from 'lucide-react'
+import { Calendar, Clock, MapPin, Euro, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, Car, Crown, Users, Gem } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { PopularDestination } from '@/types'
 
 interface RideCalculatorProps {
   locale: Locale
@@ -27,28 +26,51 @@ interface RideCalculatorProps {
 type RideType = 'immediate' | 'reservation'
 type VehicleCategory = 'standard' | 'berline' | 'van'
 
-// ✅ Fonction utilitaire : Obtenir le taux au km selon la distance totale et la catégorie (tarification dégressive)
-// Le taux s'applique sur la totalité de la distance (pas de calcul par tranche)
-function getRatePerKm(distanceInKm: number, category: VehicleCategory): number {
+// ✅ PARAMÈTRES DE BASE (Ajustables)
+const RATE_PER_MINUTE = 0.50 // Pour compenser le temps passé dans les bouchons
+const MIN_PRICE_STANDARD = 15 // Prix minimum pour Standard
+const MIN_PRICE_VAN = 25 // Prix minimum pour Van/Berline
+const APPROACH_DISTANCE_THRESHOLD = 10 // Distance en km au-delà de laquelle on ajoute un supplément
+const APPROACH_SURCHARGE = 10 // Supplément en € pour approche lointaine
+
+// ✅ NOUVELLE LOGIQUE : Tarification zonale (Zonal Pricing) - MODIFIÉE
+// STANDARD :
+//   0 à 3 km : 15€ fixe
+//   3 à 7 km : 25€ fixe
+//   > 7 km : 25€ + ((Distance - 7) * 1.90€) <-- Augmenté pour la rentabilité
+// BERLINE/VAN :
+//   0 à 3 km : 25€ fixe
+//   3 à 7 km : 35€ fixe
+//   > 7 km : 35€ + ((Distance - 7) * 3.50€)
+function calculateZonalPrice(distanceInKm: number, category: VehicleCategory): number {
   if (category === 'standard') {
-    // STANDARD : Tarification dégressive par paliers
-    if (distanceInKm <= 15) return 3.00
-    if (distanceInKm <= 50) return 2.70
-    if (distanceInKm <= 70) return 2.50
-    if (distanceInKm <= 200) return 2.10
-    return 1.70 // Plus de 200 km
+    // STANDARD
+    if (distanceInKm <= 3) {
+      return 15 // Zone 1 : Forfait fixe
+    } else if (distanceInKm <= 7) {
+      return 25 // Zone 2 : Forfait fixe
+    } else {
+      // Zone 3 : 25€ + (Distance - 7) * 1.90€
+      return 25 + ((distanceInKm - 7) * 1.90)
+    }
   } else {
-    // BERLINE & VAN : Tarification dégressive par paliers
-    if (distanceInKm <= 15) return 4.00
-    if (distanceInKm <= 50) return 3.70
-    if (distanceInKm <= 70) return 3.50
-    if (distanceInKm <= 200) return 3.10
-    return 1.90 // Plus de 200 km
+    // BERLINE & VAN
+    if (distanceInKm <= 3) {
+      return 25 // Zone 1 : 25€ fixe
+    } else if (distanceInKm <= 7) {
+      return 35 // Zone 2 : 35€ fixe
+    } else {
+      // Zone 3 : 35€ + (Distance - 7) * 3.50€
+      return 35 + ((distanceInKm - 7) * 3.50)
+    }
   }
 }
 
-// Majoration pour garantie de service aller-retour (10% de majoration)
-const ROUND_TRIP_PREMIUM_FEE = 0.10
+// ✅ Prix basé sur le temps réel (Sécurité Trafic)
+// Simule un tarif taximètre : (Distance * 1.10€) + (Durée_Minutes * 0.80€)
+function calculateTimeBasedPrice(distanceInKm: number, durationInMinutes: number): number {
+  return (distanceInKm * 1.10) + (durationInMinutes * 0.80)
+}
 
 export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }: RideCalculatorProps) {
   const t = getTranslations(locale)
@@ -88,22 +110,17 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [isSubmitting, setIsSubmitting] = useState(false) // Protection contre les doubles clics
   const [isImmediateAvailable, setIsImmediateAvailable] = useState(true)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
-  const [selectedPopularDestination, setSelectedPopularDestination] = useState<PopularDestination | null>(null) // ✅ Pour identifier si c'est une destination populaire
   const [calculation, setCalculation] = useState<{
     distance: number
     duration: number
     price: number
-    basePrice?: number // Prix de base sans les frais fixes de véhicule
+    priceBasedOnDistance?: number // Prix A : Forfait Distance
+    priceBasedOnTime?: number // Prix B : Temps Réel
+    isTrafficSurcharge?: boolean // TRUE si Prix B > Prix A (trafic dense)
+    approachSurcharge?: number // Supplément approche si > 10km
   } | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
-  const [destinationPrices, setDestinationPrices] = useState<Array<{
-    destination: PopularDestination
-    price: number
-    distance: number
-    loading: boolean
-  }>>([])
-  const [calculatingPrices, setCalculatingPrices] = useState(false)
   const [departureInput, setDepartureInput] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('vtc_departure') || ''
@@ -138,8 +155,6 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     if (place.formatted_address) {
       setArrival(place.formatted_address)
       setArrivalInput(place.formatted_address)
-      // ✅ Réinitialiser la destination populaire si l'utilisateur tape manuellement
-      setSelectedPopularDestination(null)
     }
   }, [])
 
@@ -182,60 +197,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     }
   }, [arrival])
 
-  // ✅ Écouter l'événement personnalisé quand une destination populaire est sélectionnée
-  useEffect(() => {
-    const handlePopularDestinationSelected = (event: CustomEvent) => {
-      const { destination } = event.detail as { destination: PopularDestination }
-      
-      // Pré-remplir l'adresse d'arrivée
-      setArrival(destination.address)
-      setArrivalInput(destination.address)
-      
-      // Marquer comme destination populaire sélectionnée
-      setSelectedPopularDestination(destination)
-      
-      // Calculer automatiquement le prix si le départ est déjà défini
-      if (departure || departureInput) {
-        const finalDeparture = departure || departureInput
-        calculateRide(finalDeparture, destination.address)
-          .then((result) => {
-            if (result) {
-              // Utiliser le prix fixe de la destination populaire
-              let finalPrice = destination.fixed_price
-              if (isRoundTrip) {
-                finalPrice = (destination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-              }
-              
-              setCalculation({
-                ...result,
-                price: Math.round(finalPrice * 100) / 100,
-              })
-              setShowSuccess(true)
-              
-              // Scroll vers le résultat
-              setTimeout(() => {
-                const resultElement = document.getElementById('calculation-result')
-                if (resultElement) {
-                  resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-                }
-              }, 300)
-            }
-          })
-          .catch((err) => {
-            console.error('Error calculating ride:', err)
-          })
-      }
-    }
-
-    // Écouter l'événement personnalisé
-    window.addEventListener('popularDestinationSelected', handlePopularDestinationSelected as EventListener)
-
-    return () => {
-      window.removeEventListener('popularDestinationSelected', handlePopularDestinationSelected as EventListener)
-    }
-  }, [departure, departureInput, isRoundTrip, calculateRide])
-
-  // ✅ Synchroniser avec localStorage au montage (pour récupérer l'adresse de départ de PopularDestinations)
+  // ✅ Synchroniser avec localStorage au montage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedDeparture = localStorage.getItem('vtc_departure')
@@ -248,20 +210,6 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       if (savedArrival && savedArrival !== arrival) {
         setArrival(savedArrival)
         setArrivalInput(savedArrival)
-      }
-      
-      // Récupérer la destination populaire sélectionnée si elle existe
-      try {
-        const savedPopularDest = localStorage.getItem('vtc_selected_popular_destination')
-        if (savedPopularDest) {
-          const popularDest = JSON.parse(savedPopularDest)
-          // Vérifier si l'adresse d'arrivée correspond
-          if (savedArrival === popularDest.address) {
-            setSelectedPopularDestination(popularDest as PopularDestination)
-          }
-        }
-      } catch (err) {
-        console.debug('Error parsing saved popular destination:', err)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -308,175 +256,56 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     if (result && result.address) {
       setDeparture(result.address)
       setDepartureInput(result.address)
-      // Calculer automatiquement les prix vers les destinations populaires
-      await calculateDestinationPrices(result.address)
     }
   }
-
-  // Calculer les prix vers les destinations populaires
-  const calculateDestinationPrices = async (originAddress: string) => {
-    setCalculatingPrices(true)
-    try {
-      const supabase = createClient()
-      const { data: destinations, error } = await supabase
-        .from('popular_destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .limit(6)
-
-      if (error || !destinations) {
-        console.error('Error loading destinations:', error)
-        return
-      }
-
-      // Initialiser les destinations avec loading
-      const destinationsWithPrices = destinations.map((dest: any) => ({
-        destination: dest as PopularDestination,
-        price: dest.fixed_price,
-        distance: 0,
-        loading: true,
-      }))
-      setDestinationPrices(destinationsWithPrices)
-
-      // ✅ Pour les destinations populaires, on garde toujours le prix fixe (pas de calcul au km)
-      // On peut calculer la distance pour l'affichage, mais le prix reste fixe
-      const calculatedPrices = await Promise.all(
-        destinations.map(async (dest: any) => {
-          try {
-            const result = await calculateRide(originAddress, dest.address)
-            // ✅ Utiliser le prix fixe de la destination populaire (pas de calcul au km)
-            let finalPrice = dest.fixed_price
-            if (isRoundTrip) {
-              finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-            }
-            
-            return {
-              destination: dest as PopularDestination,
-              price: Math.round(finalPrice * 100) / 100,
-              distance: result ? result.distance : 0,
-              loading: false,
-            }
-          } catch (err) {
-            console.error(`Error calculating distance for ${dest.name_fr}:`, err)
-            // En cas d'erreur, utiliser le prix fixe de la destination
-            let finalPrice = dest.fixed_price
-            if (isRoundTrip) {
-              finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-            }
-            
-            return {
-              destination: dest as PopularDestination,
-              price: Math.round(finalPrice * 100) / 100,
-              distance: 0,
-              loading: false,
-            }
-          }
-        })
-      )
-
-      setDestinationPrices(calculatedPrices)
-    } catch (error) {
-      console.error('Error calculating destination prices:', error)
-    } finally {
-      setCalculatingPrices(false)
-    }
-  }
-
-  // ✅ Détecter automatiquement si l'adresse d'arrivée correspond à une destination populaire
-  useEffect(() => {
-    const checkPopularDestination = async () => {
-      // Si l'utilisateur a déjà sélectionné une destination populaire, ne pas vérifier
-      if (selectedPopularDestination) {
-        return
-      }
-      
-      // Si l'adresse d'arrivée est vide, ne pas vérifier
-      if (!arrival && !arrivalInput) {
-        return
-      }
-      
-      const arrivalAddress = arrival || arrivalInput
-      
-      try {
-        const supabase = createClient()
-        const { data: destinations, error } = await supabase
-          .from('popular_destinations')
-          .select('*')
-          .eq('is_active', true)
-          .eq('address', arrivalAddress)
-          .single()
-        
-        if (!error && destinations) {
-          // ✅ Destination populaire détectée automatiquement
-          setSelectedPopularDestination(destinations as PopularDestination)
-        } else {
-          // Si l'adresse ne correspond pas exactement, vérifier si elle contient l'adresse d'une destination populaire
-          const { data: allDestinations } = await supabase
-            .from('popular_destinations')
-            .select('*')
-            .eq('is_active', true)
-          
-          if (allDestinations) {
-            const matchingDestination = allDestinations.find((dest: any) => 
-              arrivalAddress.toLowerCase().includes(dest.address.toLowerCase()) ||
-              dest.address.toLowerCase().includes(arrivalAddress.toLowerCase())
-            )
-            
-            if (matchingDestination) {
-              setSelectedPopularDestination(matchingDestination as PopularDestination)
-            }
-          }
-        }
-      } catch (err) {
-        // En cas d'erreur, on ignore silencieusement (pas critique)
-        console.debug('Error checking popular destination:', err)
-      }
-    }
-    
-    checkPopularDestination()
-  }, [arrival, arrivalInput, selectedPopularDestination])
 
   // ✅ Recalculer automatiquement le prix quand la catégorie de véhicule ou l'option aller-retour change
   useEffect(() => {
     // Utiliser la forme fonctionnelle de setState pour accéder à la valeur actuelle sans la mettre en dépendance
     setCalculation((currentCalculation) => {
-      // Si c'est une destination populaire, ne pas recalculer (prix fixe)
-      if (selectedPopularDestination) {
-        return currentCalculation
-      }
-      
-      // Si un calcul existe déjà avec une distance, on recalcule le prix avec la tarification dégressive
-      if (currentCalculation && currentCalculation.distance) {
-        // Calculer la distance en km
+      // Si un calcul existe déjà avec une distance et une duration, on recalcule le prix avec la logique hybride
+      if (currentCalculation && currentCalculation.distance && currentCalculation.duration) {
+        // Calculer la distance en km et la durée en minutes
         const distanceInKm = currentCalculation.distance / 1000
+        const durationInMinutes = currentCalculation.duration / 60
         
-        // ✅ Nouvelle logique : Obtenir le taux au km selon la distance totale et la catégorie (tarification dégressive)
-        const ratePerKm = getRatePerKm(distanceInKm, vehicleCategory)
+        // ✅ Prix A : Forfait Distance (Tarification Zonale)
+        let priceBasedOnDistance = calculateZonalPrice(distanceInKm, vehicleCategory)
         
-        // ✅ Formule : Prix = Distance_en_km * Taux_Identifié
-        let oneWayPrice = distanceInKm * ratePerKm
+        // ✅ Prix B : Temps Réel (Sécurité Trafic)
+        let priceBasedOnTime = calculateTimeBasedPrice(distanceInKm, durationInMinutes)
         
-        // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-        let finalPrice = oneWayPrice
+        // ✅ Arbitrage : Prendre le maximum (le plus rentable/protectif)
+        let oneWayPrice = Math.max(priceBasedOnDistance, priceBasedOnTime)
+        
+        // Détecter si le trafic est la cause de la majoration
+        const isTrafficSurcharge = priceBasedOnTime > priceBasedOnDistance
+        
+        // Récupérer le supplément d'approche existant (s'il existe)
+        const approachSurcharge = currentCalculation.approachSurcharge || 0
+        
+        // Appliquer majoration si aller-retour : prix * 2
+        let finalPrice = oneWayPrice + approachSurcharge
         if (isRoundTrip) {
-          finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
+          finalPrice = (oneWayPrice * 2) + approachSurcharge
         }
         
         const newPrice = Math.round(finalPrice * 100) / 100
         
-        // Retourner l'objet mis à jour uniquement si le prix a réellement changé
-        if (newPrice !== currentCalculation.price) {
-          return {
-            ...currentCalculation,
-            price: newPrice,
-          }
+        // Retourner l'objet mis à jour avec toutes les informations
+        return {
+          ...currentCalculation,
+          price: newPrice,
+          priceBasedOnDistance: Math.round(priceBasedOnDistance * 100) / 100,
+          priceBasedOnTime: Math.round(priceBasedOnTime * 100) / 100,
+          isTrafficSurcharge,
+          approachSurcharge,
         }
       }
       // Retourner la valeur actuelle si aucune mise à jour nécessaire
       return currentCalculation
     })
-  }, [vehicleCategory, isRoundTrip, selectedPopularDestination]) // ✅ Dépendances: vehicleCategory, isRoundTrip, et selectedPopularDestination
+  }, [vehicleCategory, isRoundTrip]) // ✅ Dépendances: vehicleCategory et isRoundTrip
 
   const handleCalculate = async () => {
     // Utiliser departureInput et arrivalInput si departure/arrival sont vides (pour permettre le calcul même si debounce n'a pas encore synchronisé)
@@ -507,35 +336,41 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
     try {
       const result = await calculateRide(finalDeparture, finalArrival)
       if (result) {
-        let finalPrice: number
+        // Calculer la distance en km et la durée en minutes
+        const distanceInKm = result.distance / 1000
+        const durationInMinutes = result.duration / 60
         
-        // ✅ Vérifier si c'est une destination populaire (prix fixe)
-        if (selectedPopularDestination && selectedPopularDestination.address === finalArrival) {
-          // ✅ Destination populaire : utiliser le prix fixe
-          finalPrice = selectedPopularDestination.fixed_price
-          if (isRoundTrip) {
-            finalPrice = (selectedPopularDestination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-          }
-        } else {
-          // ✅ Destination normale : utiliser la tarification dégressive par paliers
-          const distanceInKm = result.distance / 1000
-          
-          // Obtenir le taux au km selon la distance totale et la catégorie
-          const ratePerKm = getRatePerKm(distanceInKm, vehicleCategory)
-          
-          // ✅ Formule : Prix = Distance_en_km * Taux_Identifié
-          let oneWayPrice = distanceInKm * ratePerKm
-          
-          // Appliquer majoration si aller-retour : (Prix_Aller * 2) * 1.10
-          finalPrice = oneWayPrice
-          if (isRoundTrip) {
-            finalPrice = (oneWayPrice * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-          }
+        // ✅ Prix A : Forfait Distance (Tarification Zonale)
+        let priceBasedOnDistance = calculateZonalPrice(distanceInKm, vehicleCategory)
+        
+        // ✅ Prix B : Temps Réel (Sécurité Trafic)
+        let priceBasedOnTime = calculateTimeBasedPrice(distanceInKm, durationInMinutes)
+        
+        // ✅ Arbitrage : Prendre le maximum (le plus rentable/protectif)
+        let oneWayPrice = Math.max(priceBasedOnDistance, priceBasedOnTime)
+        
+        // Détecter si le trafic est la cause de la majoration
+        const isTrafficSurcharge = priceBasedOnTime > priceBasedOnDistance
+        
+        // ✅ Gestion de l'approche (simulation : pour l'instant, on laisse à 0)
+        // TODO: Implémenter le calcul réel de distance chauffeur -> départ client avec Google Distance Matrix
+        let approachSurcharge = 0
+        // Si on a une position actuelle (chauffeur) et un départ, on pourrait calculer la distance
+        // Pour l'instant, on laisse à 0 (à implémenter)
+        
+        // Appliquer majoration si aller-retour : prix * 2
+        let finalPrice = oneWayPrice + approachSurcharge
+        if (isRoundTrip) {
+          finalPrice = (oneWayPrice * 2) + approachSurcharge
         }
         
         setCalculation({
           ...result,
           price: Math.round(finalPrice * 100) / 100,
+          priceBasedOnDistance: Math.round(priceBasedOnDistance * 100) / 100,
+          priceBasedOnTime: Math.round(priceBasedOnTime * 100) / 100,
+          isTrafficSurcharge,
+          approachSurcharge,
         })
         setShowSuccess(true)
         setRetryCount(0)
@@ -688,7 +523,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
         estimated_price: calculation.price,
         estimated_distance: calculation.distance,
         estimated_duration: calculation.duration,
-        status: 'pending' as const,
+        // Le statut sera défini côté serveur (confirmed pour VTC Solo)
       }
 
       console.log('📤 Envoi de la réservation:', bookingData)
@@ -1014,7 +849,6 @@ Client: ${data.firstName} ${data.lastName}`
                     // Ne pas mettre à jour departure immédiatement - attendre le debounce
                     if (currentAddress && newValue !== currentAddress) {
                       resetGeolocation()
-                      setDestinationPrices([])
                     }
                   }}
                   className="pl-12"
@@ -1047,67 +881,12 @@ Client: ${data.firstName} ${data.lastName}`
                   onChange={(e) => {
                     const newValue = e.target.value
                     setArrivalInput(newValue)
-                    // ✅ Réinitialiser la destination populaire si l'utilisateur modifie manuellement l'adresse
-                    if (selectedPopularDestination && newValue !== selectedPopularDestination.address) {
-                      setSelectedPopularDestination(null)
-                    }
                     // Ne pas mettre à jour arrival immédiatement - attendre le debounce
                   }}
                   className="pl-12"
                   disabled={!isMapsLoaded}
                 />
               </div>
-              
-              {/* ✅ Alerte pour destination populaire avec prix fixe */}
-              {selectedPopularDestination && (
-                <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-2 border-blue-300 rounded-xl shadow-lg animate-fade-in">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <Info className="w-5 h-5 text-blue-600 animate-pulse" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-4 h-4 text-blue-600" />
-                        <p className="font-bold text-blue-900 text-sm">
-                          {locale === 'fr' 
-                            ? '✨ Un tarif forfaitaire est disponible pour cette destination'
-                            : locale === 'ar'
-                            ? '✨ يتوفر سعر ثابت لهذه الوجهة'
-                            : '✨ A fixed rate is available for this destination'}
-                        </p>
-                      </div>
-                      <p className="text-sm text-blue-800 mb-2">
-                        <span className="font-semibold">
-                          {locale === 'fr' ? 'Prix Fixe :' : locale === 'ar' ? 'السعر الثابت:' : 'Fixed Price:'}
-                        </span>{' '}
-                        <span className="text-lg font-bold text-blue-900">
-                          {formatPrice(
-                            isRoundTrip 
-                              ? (selectedPopularDestination.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-                              : selectedPopularDestination.fixed_price,
-                            locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US'
-                          )}
-                        </span>
-                        {isRoundTrip && (
-                          <span className="text-xs text-blue-600 ml-1">
-                            ({locale === 'fr' ? 'Aller-retour' : locale === 'ar' ? 'ذهاب وإياب' : 'Round trip'})
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-blue-700 flex items-center gap-1">
-                        <ArrowUp className="w-3 h-3" />
-                        <span>
-                          {locale === 'fr' 
-                            ? 'Voir la section "Destinations Populaires" ci-dessus pour plus d\'informations.'
-                            : locale === 'ar'
-                            ? 'انظر إلى قسم "الوجهات الشائعة" أعلاه لمزيد من المعلومات.'
-                            : 'See the "Popular Destinations" section above for more information.'}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1204,118 +983,6 @@ Client: ${data.firstName} ${data.lastName}`
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
           </Button>
 
-          {/* Section des prix vers destinations populaires depuis la position */}
-          {currentAddress && destinationPrices.length > 0 && (
-            <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-100 animate-fade-in">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-gray-900">
-                  {locale === 'fr' 
-                    ? `Prix depuis votre position` 
-                    : `Prices from your location`}
-                </h3>
-              </div>
-              <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-blue-500" />
-                <span className="truncate">{currentAddress}</span>
-              </p>
-              
-              {calculatingPrices ? (
-                <div className="text-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    {locale === 'fr' ? 'Calcul des prix en cours...' : 'Calculating prices...'}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {destinationPrices.map((item, index) => {
-                    const dest = item.destination
-                    const destName = locale === 'fr' ? dest.name_fr : dest.name_en
-                    return (
-                      <button
-                        key={dest.id}
-                        onClick={async () => {
-                          // ✅ Marquer cette destination comme sélectionnée (pour utiliser le prix fixe)
-                          setSelectedPopularDestination(dest)
-                          setArrival(dest.address)
-                          setArrivalInput(dest.address)
-                          
-                          // Calculer automatiquement le prix pour les destinations populaires
-                          if (departure) {
-                            try {
-                              const result = await calculateRide(departure, dest.address)
-                              if (result) {
-                                // ✅ Destination populaire : utiliser le prix fixe (pas de calcul au km)
-                                let finalPrice = dest.fixed_price
-                                if (isRoundTrip) {
-                                  finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-                                }
-                                
-                                setCalculation({
-                                  ...result,
-                                  price: Math.round(finalPrice * 100) / 100,
-                                })
-                                setShowSuccess(true)
-                                // Scroll vers le résultat
-                                setTimeout(() => {
-                                  document.getElementById('calculation-result')?.scrollIntoView({ behavior: 'smooth' })
-                                }, 100)
-                              }
-                            } catch (err) {
-                              console.error('Error calculating distance:', err)
-                              // En cas d'erreur, utiliser quand même le prix fixe
-                              let finalPrice = dest.fixed_price
-                              if (isRoundTrip) {
-                                finalPrice = (dest.fixed_price * 2) * (1 + ROUND_TRIP_PREMIUM_FEE)
-                              }
-                              setCalculation({
-                                distance: 0,
-                                duration: 0,
-                                price: Math.round(finalPrice * 100) / 100,
-                              })
-                              setShowSuccess(true)
-                            }
-                          }
-                        }}
-                        className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 animate-fade-in-up"
-                        style={{ animationDelay: `${index * 0.05}s` }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm truncate">
-                              {destName}
-                            </p>
-                            {item.distance > 0 && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {formatDistance(item.distance, locale)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0">
-                            {item.loading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                            ) : (
-                              <p className="font-bold text-blue-600 text-sm whitespace-nowrap">
-                                {formatPrice(item.price, locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              
-              <p className="text-xs text-gray-500 mt-4 text-center">
-                {locale === 'fr'
-                  ? 'Cliquez sur une destination pour l\'ajouter à votre trajet'
-                  : 'Click on a destination to add it to your trip'}
-              </p>
-            </div>
-          )}
-
           {error && retryCount > 0 && (
             <div className="p-4 text-sm text-destructive bg-red-50 border-2 border-red-100 rounded-xl animate-fade-in">
               <div className="flex items-center justify-between">
@@ -1373,27 +1040,32 @@ Client: ${data.firstName} ${data.lastName}`
                   </div>
                 </div>
                 
-                {/* ✅ Alerte pour destination populaire dans le résultat */}
-                {selectedPopularDestination && (
-                  <div className="p-4 bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 border-2 border-green-300 rounded-xl shadow-md animate-fade-in">
+                {/* ✅ Alerte trafic dense si le prix basé sur le temps est supérieur */}
+                {calculation.isTrafficSurcharge && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-2 border-orange-300 rounded-xl shadow-md animate-fade-in">
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
+                        <span className="text-xl">🚗</span>
+                        <span className="text-xl">⏳</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-green-900 text-sm mb-1">
-                          {locale === 'fr' 
-                            ? '✨ Tarif forfaitaire appliqué'
-                            : locale === 'ar'
-                            ? '✨ تم تطبيق السعر الثابت'
-                            : '✨ Fixed rate applied'}
-                        </p>
-                        <p className="text-xs text-green-700">
-                          {locale === 'fr' 
-                            ? `Cette destination bénéficie d'un prix fixe de ${formatPrice(selectedPopularDestination.fixed_price, 'fr-FR')}. Voir la section "Destinations Populaires" ci-dessus.`
-                            : locale === 'ar'
-                            ? `هذه الوجهة تستفيد من سعر ثابت ${formatPrice(selectedPopularDestination.fixed_price, 'ar-SA')}. انظر إلى قسم "الوجهات الشائعة" أعلاه.`
-                            : `This destination benefits from a fixed price of ${formatPrice(selectedPopularDestination.fixed_price, 'en-US')}. See the "Popular Destinations" section above.`}
+                        <p className="text-sm text-orange-900 leading-relaxed">
+                          {locale === 'fr' ? (
+                            <>
+                              <span className="font-semibold">⚠️ Trafic dense détecté.</span> Le trajet va durer plus longtemps que prévu (environ{' '}
+                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} min</span>). Le prix a été ajusté pour tenir compte de cette durée.
+                            </>
+                          ) : locale === 'ar' ? (
+                            <>
+                              <span className="font-semibold">⚠️ تم اكتشاف ازدحام مروري.</span> ستستغرق الرحلة وقتاً أطول مما هو متوقع (حوالي{' '}
+                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} دقيقة</span>). تم تعديل السعر لمراعاة هذه المدة.
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-semibold">⚠️ Heavy traffic detected.</span> The journey will take longer than expected (approximately{' '}
+                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} min</span>). The price has been adjusted to account for this duration.
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>
