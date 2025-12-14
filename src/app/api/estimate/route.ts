@@ -20,7 +20,6 @@ import { NextRequest, NextResponse } from 'next/server'
  *   traffic_surcharge: boolean
  * }
  */
- */
 
 // ✅ Fonction de calcul du prix zonale (identique à RideCalculator.tsx)
 function calculateZonalPrice(distanceInKm: number, category: 'standard' | 'berline' | 'van'): number {
