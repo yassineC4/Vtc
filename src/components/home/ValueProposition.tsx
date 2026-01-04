@@ -11,15 +11,15 @@ export function ValueProposition() {
     {
       icon: ShieldCheck,
       title: locale === 'fr' 
-        ? 'Sécurité Absolue & Sérénité' 
+        ? 'Sécurité & Sérénité' 
         : locale === 'ar'
-        ? 'الأمان المطلق والطمأنينة'
-        : 'Absolute Security & Peace of Mind',
+        ? 'الأمان والطمأنينة'
+        : 'Security & serenity',
       description: locale === 'fr'
-        ? 'Contrairement aux applis aléatoires, nos véhicules sont maintenus rigoureusement et nos chauffeurs sont vérifiés. Votre sécurité est notre priorité absolue.'
+        ? 'Chauffeurs vérifiés • Suivi de trajet en direct • Assurance complète'
         : locale === 'ar'
-        ? 'على عكس التطبيقات العشوائية، يتم صيانة سياراتنا بدقة ويتم التحقق من سائقيها. سلامتك هي أولويتنا المطلقة.'
-        : 'Unlike random apps, our vehicles are rigorously maintained and our drivers are verified. Your safety is our absolute priority.',
+        ? 'سائقون موثقون • تتبع الرحلة مباشرة • تأمين كامل'
+        : 'Vetted chauffeurs • Live trip tracking • Full insurance coverage',
       color: 'from-blue-500 to-indigo-600',
       bgColor: 'bg-blue-50',
       iconBg: 'bg-blue-100',
@@ -28,15 +28,15 @@ export function ValueProposition() {
     {
       icon: UserCheck,
       title: locale === 'fr'
-        ? 'Chauffeurs Professionnels'
+        ? 'Service Professionnel'
         : locale === 'ar'
-        ? 'سائقون محترفون'
-        : 'Professional Drivers',
+        ? 'خدمة احترافية'
+        : 'Professional service',
       description: locale === 'fr'
-        ? 'Des experts en costume, courtois, discrets, qui connaissent la ville et ouvrent la porte. Pas des amateurs, mais de vrais professionnels du transport.'
+        ? 'Assistance niveau concierge • Service premium discret • Soin personnalisé du passager'
         : locale === 'ar'
-        ? 'خبراء ببدلات، مهذبون، منضبطون، يعرفون المدينة ويفتحون الباب. ليسوا هواة، بل محترفون حقيقيون في النقل.'
-        : 'Experts in suits, courteous, discreet, who know the city and open the door. Not amateurs, but true transportation professionals.',
+        ? 'مساعدة على مستوى الكونسيرج • خدمة مميزة منضبطة • رعاية شخصية للراكب'
+        : 'Concierge-level assistance • Discreet premium service • Personalized rider care',
       color: 'from-amber-500 to-orange-600',
       bgColor: 'bg-amber-50',
       iconBg: 'bg-amber-100',
@@ -48,12 +48,12 @@ export function ValueProposition() {
         ? 'Ponctualité Garantie'
         : locale === 'ar'
         ? 'الدقة مضمونة'
-        : 'Guaranteed Punctuality',
+        : 'Guaranteed punctuality',
       description: locale === 'fr'
-        ? "Pas d'annulation de dernière minute. Si on dit 14h00, c'est 14h00. Nous attendons le client, pas l'inverse. Fiabilité absolue."
+        ? 'Garantie à l\'heure • Suivi des vols et trafic • Temps tampon intégré'
         : locale === 'ar'
-        ? 'لا إلغاء في اللحظة الأخيرة. إذا قلنا الساعة 14:00، فهي 14:00. نحن ننتظر العميل، وليس العكس. موثوقية مطلقة.'
-        : "No last-minute cancellations. If we say 2:00 PM, it's 2:00 PM. We wait for the client, not the other way around. Absolute reliability.",
+        ? 'ضمان في الوقت • تتبع الرحلات والمرور • وقت عازل مدمج'
+        : 'On-time guarantee • Flight & traffic monitoring • Built-in buffer time',
       color: 'from-green-500 to-emerald-600',
       bgColor: 'bg-green-50',
       iconBg: 'bg-green-100',
@@ -73,7 +73,7 @@ export function ValueProposition() {
                 ? "Plus qu'un trajet, une expérience premium"
                 : locale === 'ar'
                 ? 'أكثر من رحلة، تجربة مميزة'
-                : 'More than a ride, a premium experience'}
+                : 'More than a trip, a premium experience'}
           </h2>
           </div>
           <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-3xl mx-auto mt-4 px-2">

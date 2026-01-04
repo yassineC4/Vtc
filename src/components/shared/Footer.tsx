@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FileText, Home, Settings, Phone, Mail, Calendar, ArrowRight } from 'lucide-react'
+import { FileText, Phone, Mail, Calendar, ArrowRight } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
 import { Button } from '@/components/ui/button'
 
@@ -61,129 +61,93 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300 border-t border-gray-800">
       {/* CTA Principal en haut du footer */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 py-8 md:py-12">
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
               {locale === 'fr'
-                ? 'Prêt à réserver votre course ?'
+                ? 'Prêt pour votre prochaine course ?'
                 : locale === 'ar'
-                ? 'هل أنت مستعد لحجز رحلتك؟'
-                : 'Ready to book your ride?'}
+                ? 'هل أنت مستعد لرحلتك القادمة؟'
+                : 'Ready for your next ride?'}
             </h3>
             <p className="text-lg text-indigo-100 mb-6">
               {locale === 'fr'
-                ? 'Calculez votre prix en quelques secondes et réservez en un clic'
+                ? 'Prix fixe affiché à l\'avance. Disponibilité 24/7. Confirmez en quelques secondes.'
                 : locale === 'ar'
-                ? 'احسب سعرك في ثوانٍ واحجز بنقرة واحدة'
-                : 'Calculate your price in seconds and book with one click'}
+                ? 'سعر ثابت معروض مسبقاً. متاح 24/7. أكد في ثوانٍ.'
+                : 'Fixed fare shown up front. 24/7 availability. Confirm in seconds.'}
             </p>
-            <Button
-              onClick={scrollToReservation}
-              size="lg"
-              className="bg-white text-primary hover:bg-gray-100 text-lg px-8 py-6 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group"
-            >
-              <span className="flex items-center gap-3">
-                <Calendar className="w-5 h-5" />
-                {t.bookNow}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-              </span>
-            </Button>
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
+              <Button
+                onClick={scrollToReservation}
+                size="lg"
+                className="bg-white text-primary hover:bg-gray-100 text-lg px-8 py-6 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group"
+              >
+                <span className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5" />
+                  {locale === 'fr' ? 'Estimer le prix' : locale === 'ar' ? 'قدر السعر' : 'Estimate the price'}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                </span>
+              </Button>
+            </div>
+            <p className="text-sm text-indigo-200">
+              {locale === 'fr'
+                ? 'Tous les taxes et péages inclus. Attente incluse : 45 min aéroport / 20 min gare-hôtel. Confirmation finale avant réservation.'
+                : locale === 'ar'
+                ? 'جميع الضرائب والرسوم مدرجة. الانتظار مدرج: 45 دقيقة للمطار / 20 دقيقة للمحطة-الفندق. تأكيد نهائي قبل الحجز.'
+                : 'All taxes and tolls included. Waiting included: 45 min airport / 20 min station-hotel. Final confirmation before booking.'}
+            </p>
+            <div className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-indigo-100">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">4.8/5</span>
+                <span>{locale === 'fr' ? 'note moyenne' : locale === 'ar' ? 'متوسط التقييم' : 'average rating'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">24/7</span>
+                <span>{locale === 'fr' ? 'réservations' : locale === 'ar' ? 'حجوزات' : 'bookings'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">✓</span>
+                <span>{locale === 'fr' ? 'Chauffeurs vérifiés' : locale === 'ar' ? 'سائقون موثقون' : 'Verified chauffeurs'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">✈️</span>
+                <span>{locale === 'fr' ? 'Suivi des vols inclus' : locale === 'ar' ? 'تتبع الرحلات مدرج' : 'Flight tracking included'}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-          {/* Colonne 1: Navigation */}
+          {/* Colonne 1: VTC */}
+          <div>
+            <h3 className="text-white font-bold text-xl mb-4">
+              {locale === 'fr' ? 'VTC' : locale === 'ar' ? 'VTC' : 'VTC'}
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">
+              {locale === 'fr'
+                ? 'Service de chauffeur premium en France.'
+                : locale === 'ar'
+                ? 'خدمة سائق مميزة في فرنسا.'
+                : 'Premium chauffeur service across France.'}
+            </p>
+          </div>
+
+          {/* Colonne 2: Services */}
           <div>
             <h3 className="text-white font-bold text-lg mb-4">
-              {locale === 'fr' ? 'Navigation' : locale === 'ar' ? 'التنقل' : 'Navigation'}
+              {locale === 'fr' ? 'Services' : locale === 'ar' ? 'خدمات' : 'Services'}
             </h3>
-            <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <Home className="w-4 h-4" />
-                  {t.home}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/legal"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <FileText className="w-4 h-4" />
-                  {t.legal}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <Settings className="w-4 h-4" />
-                  {t.admin}
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Colonne 2: Contact */}
-          <div>
-            <h3 className="text-white font-bold text-lg mb-4">{t.contact}</h3>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="tel:+33695297192"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>+33 6 95 29 71 92</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://wa.me/33695297192"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>WhatsApp</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:[VOTRE EMAIL]"
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>[VOTRE EMAIL]</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Colonne 3: Services */}
-          <div>
-            <h3 className="text-white font-bold text-lg mb-4">{t.services}</h3>
             <ul className="space-y-3">
               <li>
                 <button
                   onClick={scrollToReservation}
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200 text-left w-full group"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200 text-left"
                 >
-                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200" />
-                  <span>
-                    {locale === 'fr'
-                      ? 'Transport VTC Premium'
-                      : locale === 'ar'
-                      ? 'نقل VTC المميز'
-                      : 'Premium VTC Transport'}
-                  </span>
+                  {locale === 'fr' ? 'Transferts aéroport' : locale === 'ar' ? 'نقل المطار' : 'Airport transfers'}
                 </button>
               </li>
               <li>
@@ -194,73 +158,102 @@ export function Footer() {
                       otherServices.scrollIntoView({ behavior: 'smooth', block: 'start' })
                     }
                   }}
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200 text-left w-full group"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200 text-left"
                 >
-                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200" />
-                  <span>
-                    {locale === 'fr'
-                      ? 'Chauffeur à disposition'
-                      : locale === 'ar'
-                      ? 'سائق تحت الطلب'
-                      : 'Chauffeur on standby'}
-                  </span>
+                  {locale === 'fr' ? 'Affaires' : locale === 'ar' ? 'أعمال' : 'Business'}
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => {
-                    const destinations = document.getElementById('popular-destinations')
-                    if (destinations) {
-                      destinations.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    const otherServices = document.getElementById('other-services')
+                    if (otherServices) {
+                      otherServices.scrollIntoView({ behavior: 'smooth', block: 'start' })
                     }
                   }}
-                  className="flex items-center gap-2 hover:text-primary transition-colors duration-200 text-left w-full group"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200 text-left"
                 >
-                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200" />
-                  <span>
-                    {locale === 'fr'
-                      ? 'Destinations populaires'
-                      : locale === 'ar'
-                      ? 'الوجهات الشعبية'
-                      : 'Popular destinations'}
-                  </span>
+                  {locale === 'fr' ? 'Événements' : locale === 'ar' ? 'فعاليات' : 'Events'}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={scrollToReservation}
+                  className="text-gray-400 hover:text-primary transition-colors duration-200 text-left"
+                >
+                  {locale === 'fr' ? 'Longue distance' : locale === 'ar' ? 'مسافات طويلة' : 'Long distance'}
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Colonne 4: Informations */}
+          {/* Colonne 3: Legal */}
           <div>
             <h3 className="text-white font-bold text-lg mb-4">
-              {locale === 'fr' ? 'Informations' : locale === 'ar' ? 'معلومات' : 'Information'}
+              {locale === 'fr' ? 'Légal' : locale === 'ar' ? 'قانوني' : 'Legal'}
             </h3>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-3">
               <li>
-                <span>
-                  {locale === 'fr'
-                    ? 'Service disponible 24/7'
-                    : locale === 'ar'
-                    ? 'خدمة متاحة على مدار الساعة'
-                    : 'Service available 24/7'}
-                </span>
+                <Link
+                  href="/legal"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  {locale === 'fr' ? 'Mentions légales' : locale === 'ar' ? 'إشعارات قانونية' : 'Legal notice'}
+                </Link>
               </li>
               <li>
-                <span>
-                  {locale === 'fr'
-                    ? 'Réservation en ligne'
-                    : locale === 'ar'
-                    ? 'حجز عبر الإنترنت'
-                    : 'Online booking'}
-                </span>
+                <Link
+                  href="/legal"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  {locale === 'fr' ? 'Confidentialité' : locale === 'ar' ? 'الخصوصية' : 'Privacy'}
+                </Link>
               </li>
               <li>
-                <span>
-                  {locale === 'fr'
-                    ? 'Véhicules haut de gamme'
-                    : locale === 'ar'
-                    ? 'مركبات فاخرة'
-                    : 'Premium vehicles'}
-                </span>
+                <Link
+                  href="/legal"
+                  className="text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  {locale === 'fr' ? 'Conditions' : locale === 'ar' ? 'الشروط' : 'Terms'}
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Colonne 4: Contact */}
+          <div>
+            <h3 className="text-white font-bold text-lg mb-4">
+              {locale === 'fr' ? 'Contact' : locale === 'ar' ? 'اتصل بنا' : 'Contact'}
+            </h3>
+            <ul className="space-y-3">
+              <li>
+                <a
+                  href="mailto:contact@vtc.fr"
+                  className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>contact@vtc.fr</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="tel:+33695297192"
+                  className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>+33 6 95 29 71 92</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://wa.me/33695297192"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors duration-200"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                </a>
               </li>
             </ul>
           </div>
@@ -270,7 +263,7 @@ export function Footer() {
         <div className="border-t border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-400">
-              © {currentYear} [VOTRE NOM DE SOCIÉTÉ]. {t.rights}
+              © {currentYear} VTC. {locale === 'fr' ? 'Tous droits réservés' : locale === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}
             </p>
             <div className="flex gap-6 text-sm">
               <Link

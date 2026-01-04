@@ -196,3 +196,4 @@ La table `bookings` contient :
 
 
 
+

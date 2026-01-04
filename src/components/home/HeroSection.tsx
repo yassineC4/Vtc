@@ -74,11 +74,38 @@ export function HeroSection() {
         
         <div className={`text-center space-y-6 md:space-y-8 max-w-4xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '0.2s' }}>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight text-white leading-tight drop-shadow-2xl animate-fade-in-up">
-            {t.home.title}
+            {locale === 'fr' 
+              ? 'VTC Chauffeur Professionnel' 
+              : locale === 'ar' 
+              ? 'VTC سائق محترف' 
+              : 'VTC Professional Chauffeur Service'}
           </h1>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 max-w-2xl mx-auto font-medium leading-relaxed px-2 sm:px-4 drop-shadow-lg animate-fade-in" style={{ animationDelay: '0.4s' }}>
-            {t.home.subtitle}
+            {locale === 'fr'
+              ? 'Votre trajet premium, simple et à l\'heure.'
+              : locale === 'ar'
+              ? 'رحلتك المميزة، بسيطة وفي الوقت المحدد.'
+              : 'Your premium ride, simple and on time.'}
           </p>
+          
+          {/* Badges */}
+          <div className="flex flex-wrap justify-center gap-4 mt-8 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+            <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+              <span className="text-sm font-semibold text-white">
+                {locale === 'fr' ? 'Prix fixe à l\'avance' : locale === 'ar' ? 'سعر ثابت مسبقاً' : 'Fixed price upfront'}
+              </span>
+            </div>
+            <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+              <span className="text-sm font-semibold text-white">
+                {locale === 'fr' ? 'Chauffeurs professionnels' : locale === 'ar' ? 'سائقون محترفون' : 'Professional chauffeurs'}
+              </span>
+            </div>
+            <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+              <span className="text-sm font-semibold text-white">
+                {locale === 'fr' ? 'Disponible 24/7' : locale === 'ar' ? 'متاح 24/7' : 'Available 24/7'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </section>

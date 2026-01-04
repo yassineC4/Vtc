@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { HeroSection } from '@/components/home/HeroSection'
+import { TrustSection } from '@/components/home/TrustSection'
 import { RideCalculator } from '@/components/home/RideCalculator'
 import { ReviewsSection } from '@/components/home/ReviewsSection'
 import { ValueProposition } from '@/components/home/ValueProposition'
+import { ServicesSection } from '@/components/home/ServicesSection'
 import { OtherServices } from '@/components/home/OtherServices'
+import { FleetSection } from '@/components/home/FleetSection'
+import { FAQSection } from '@/components/home/FAQSection'
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import { Footer } from '@/components/shared/Footer'
 import { StructuredData } from '@/components/shared/StructuredData'
@@ -147,67 +151,50 @@ export function HomePageClient() {
         <StructuredData data={reviewSchema} id="review-schema" />
       )}
 
-      <main className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
+      <main className="min-h-screen bg-white">
         <HeroSection />
+        
+        {/* Section Trust */}
+        <TrustSection />
         
         {/* Section Value Proposition - Pourquoi nous choisir */}
         <ValueProposition />
 
-        <section id="ride-calculator" className="py-24 px-4">
+        {/* Section Services Premium */}
+        <ServicesSection />
+
+        {/* Section Calculateur de Prix */}
+        <section id="ride-calculator" className="py-16 md:py-24 px-4 bg-gradient-to-b from-gray-50 to-white">
           <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+                {locale === 'fr' ? 'Estimez votre course' : locale === 'ar' ? 'قدر رحلتك' : 'Estimate your ride'}
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                {locale === 'fr'
+                  ? 'Chauffeur privé en quelques minutes. Prix affiché avant confirmation.'
+                  : locale === 'ar'
+                  ? 'سائق خاص في دقائق. السعر معروض قبل التأكيد.'
+                  : 'Private chauffeur in minutes. Price shown before you confirm.'}
+              </p>
+            </div>
             <RideCalculator locale={locale} />
           </div>
         </section>
+
+        {/* Section Flotte */}
+        <FleetSection />
 
         {/* Section Autres Services - Mise à disposition */}
         <div id="other-services">
           <OtherServices />
         </div>
         
-        {/* Section Images Premium */}
-        <section className="py-16 md:py-24 px-4 bg-white">
-          <div className="container mx-auto max-w-7xl">
-            <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-                {locale === 'fr' ? 'Transport de Luxe' : locale === 'ar' ? 'النقل الفاخر' : 'Luxury Transportation'}
-              </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                {locale === 'fr' 
-                  ? 'Voyagez avec style et confort dans nos véhicules haut de gamme'
-                  : locale === 'ar'
-                  ? 'سافر بأناقة وراحة في مركباتنا الفاخرة'
-                  : 'Travel with style and comfort in our premium vehicles'}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-              {[1, 2, 3].map((num, index) => (
-                <div
-                  key={num}
-                  className="relative h-[300px] md:h-[400px] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group animate-fade-in-up"
-                  style={{ animationDelay: `${index * 0.2}s` }}
-                >
-                  <Image
-                    src={`/images/luxury-car-${num}.jpg`}
-                    alt={`Véhicule premium ${num}`}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 400px"
-                    placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                    }}
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-        
+        {/* Section Avis Clients */}
         <ReviewsSection locale={locale} />
+        
+        {/* Section FAQ */}
+        <FAQSection />
         
         {/* Footer */}
         <Footer />
