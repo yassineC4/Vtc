@@ -1,7 +1,6 @@
 'use client'
 
-import { Card, CardContent } from '@/components/ui/card'
-import { ShieldCheck, UserCheck, Clock, Sparkles } from 'lucide-react'
+import { ShieldCheck, UserCheck, Clock } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
 
 export function ValueProposition() {
@@ -20,10 +19,6 @@ export function ValueProposition() {
         : locale === 'ar'
         ? 'سائقون موثقون • تتبع الرحلة مباشرة • تأمين كامل'
         : 'Vetted chauffeurs • Live trip tracking • Full insurance coverage',
-      color: 'from-blue-500 to-indigo-600',
-      bgColor: 'bg-blue-50',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
     },
     {
       icon: UserCheck,
@@ -37,10 +32,6 @@ export function ValueProposition() {
         : locale === 'ar'
         ? 'مساعدة على مستوى الكونسيرج • خدمة مميزة منضبطة • رعاية شخصية للراكب'
         : 'Concierge-level assistance • Discreet premium service • Personalized rider care',
-      color: 'from-amber-500 to-orange-600',
-      bgColor: 'bg-amber-50',
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
     },
     {
       icon: Clock,
@@ -54,88 +45,53 @@ export function ValueProposition() {
         : locale === 'ar'
         ? 'ضمان في الوقت • تتبع الرحلات والمرور • وقت عازل مدمج'
         : 'On-time guarantee • Flight & traffic monitoring • Built-in buffer time',
-      color: 'from-green-500 to-emerald-600',
-      bgColor: 'bg-green-50',
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600',
     },
   ]
 
   return (
-    <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6 bg-gradient-to-b from-white via-gray-50 to-white">
+    <section className="py-20 md:py-32 px-4 bg-white">
       <div className="container mx-auto max-w-7xl">
-        {/* Titre de section */}
-        <div className="text-center mb-12 md:mb-16">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">
-              {locale === 'fr'
-                ? "Plus qu'un trajet, une expérience premium"
-                : locale === 'ar'
-                ? 'أكثر من رحلة، تجربة مميزة'
-                : 'More than a trip, a premium experience'}
-          </h2>
-          </div>
-          <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-3xl mx-auto mt-4 px-2">
+        {/* En-tête avec beaucoup d'espace */}
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
             {locale === 'fr'
-              ? 'Découvrez pourquoi nos clients nous préfèrent aux applications de VTC classiques'
+              ? "Plus qu'un trajet, une expérience premium"
               : locale === 'ar'
-              ? 'اكتشف لماذا يفضل عملاؤنا خدماتنا على تطبيقات VTC التقليدية'
-              : 'Discover why our clients prefer us over traditional VTC apps'}
-          </p>
+              ? 'أكثر من رحلة، تجربة مميزة'
+              : 'More than a trip, a premium experience'}
+          </h2>
         </div>
 
-        {/* Grille Bento avec 3 colonnes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        {/* Grille de features - Style premium épuré */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
           {features.map((feature, index) => {
             const IconComponent = feature.icon
             return (
-              <Card
+              <div
                 key={index}
-                className="group relative bg-white border-0 shadow-lg hover:shadow-2xl rounded-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden"
+                className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-300 p-8"
               >
-                {/* Effet de brillance au survol */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 -translate-x-full group-hover:translate-x-full"></div>
-                
-                <CardContent className="p-8 relative z-10">
-                  {/* Icône avec fond coloré */}
-                  <div className={`inline-flex p-4 rounded-2xl ${feature.iconBg} mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <IconComponent className={`w-8 h-8 ${feature.iconColor}`} />
+                {/* Icône discrète */}
+                <div className="mb-6">
+                  <div className="inline-flex p-3 rounded-lg bg-gray-50 group-hover:bg-gray-100 transition-colors duration-300">
+                    <IconComponent className="w-6 h-6 text-gray-700" />
                   </div>
+                </div>
 
-                  {/* Titre */}
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 group-hover:text-primary transition-colors duration-300">
-                    {feature.title}
-                  </h3>
+                {/* Titre */}
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  {feature.title}
+                </h3>
 
-                  {/* Description */}
-                  <p className="text-gray-600 leading-relaxed text-base md:text-lg">
-                    {feature.description}
-                  </p>
-
-                  {/* Barre de couleur décorative en bas */}
-                  <div className={`mt-6 h-1 w-0 group-hover:w-full bg-gradient-to-r ${feature.color} transition-all duration-500 rounded-full`}></div>
-                </CardContent>
-
-                {/* Effet de gradient subtil au survol */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none rounded-2xl`}></div>
-              </Card>
+                {/* Description */}
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
             )
           })}
-        </div>
-
-        {/* Call to action subtil */}
-        <div className="text-center mt-12 md:mt-16">
-          <p className="text-sm md:text-base text-gray-500 italic">
-            {locale === 'fr'
-              ? "Parce que votre confort et votre tranquillité d'esprit méritent mieux qu'une simple application"
-              : locale === 'ar'
-              ? 'لأن راحتك وطمأنينتك تستحقان أكثر من مجرد تطبيق'
-              : 'Because your comfort and peace of mind deserve more than just an app'}
-          </p>
         </div>
       </div>
     </section>
   )
 }
-

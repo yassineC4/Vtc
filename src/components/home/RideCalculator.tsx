@@ -13,7 +13,7 @@ import { getTranslations, type Locale } from '@/lib/i18n'
 import { useDebounce } from '@/lib/debounce'
 import { createWhatsAppUrl, DEFAULT_PHONE_NUMBER } from '@/lib/whatsapp'
 import { ReservationForm, type ReservationData } from '@/components/home/ReservationForm'
-import { Calendar, Clock, MapPin, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, Car, Crown, Users, Gem } from 'lucide-react'
+import { Calendar, Clock, MapPin, Sparkles, CheckCircle2, Loader2, Zap, CalendarCheck, Navigation, AlertCircle, Car, Crown, Users, Gem, Music, Music2, Music4, Thermometer, ThermometerSun, ThermometerSnowflake, MessageSquare, MessageSquareOff, Briefcase } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface RideCalculatorProps {
@@ -127,6 +127,11 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   const [showReservationForm, setShowReservationForm] = useState(false)
   const [reservationData, setReservationData] = useState<ReservationData | null>(null)
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Préférences à bord (On-board preferences)
+  const [musicPreference, setMusicPreference] = useState<'silence' | 'classic' | 'pop' | null>(null)
+  const [temperaturePreference, setTemperaturePreference] = useState<'cool' | 'normal' | 'warm' | null>(null)
+  const [conversationPreference, setConversationPreference] = useState<'work' | 'chat' | null>(null)
 
   // Debounce pour les champs de saisie (1500ms)
   const debouncedDeparture = useDebounce(departureInput, 1500)
@@ -574,6 +579,29 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       const babySeatText = data.babySeat
         ? (locale === 'fr' ? 'Oui' : 'Yes')
         : (locale === 'fr' ? 'Non' : 'No')
+      
+      // Préférences à bord
+      const musicText = musicPreference === 'silence' 
+        ? (locale === 'fr' ? 'Silence' : 'Silence')
+        : musicPreference === 'classic'
+        ? (locale === 'fr' ? 'Classique' : 'Classical')
+        : musicPreference === 'pop'
+        ? (locale === 'fr' ? 'Pop' : 'Pop')
+        : (locale === 'fr' ? 'Non spécifié' : 'Not specified')
+      
+      const temperatureText = temperaturePreference === 'cool'
+        ? (locale === 'fr' ? 'Frais' : 'Cool')
+        : temperaturePreference === 'normal'
+        ? (locale === 'fr' ? 'Normal' : 'Normal')
+        : temperaturePreference === 'warm'
+        ? (locale === 'fr' ? 'Chaud' : 'Warm')
+        : (locale === 'fr' ? 'Non spécifié' : 'Not specified')
+      
+      const conversationText = conversationPreference === 'work'
+        ? (locale === 'fr' ? 'Travail/Silence' : 'Work/Silence')
+        : conversationPreference === 'chat'
+        ? (locale === 'fr' ? 'Discussion' : 'Chat')
+        : (locale === 'fr' ? 'Non spécifié' : 'Not specified')
 
       const adminMessage = locale === 'fr'
         ? `Bonjour, je souhaite réserver une course.
@@ -593,7 +621,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 👥 Passagers : ${data.numberOfPassengers}
 👶 Siège bébé : ${babySeatText}
 💳 Paiement : ${paymentMethodText}
-📅 Date/Heure : ${formattedDateTime}`
+📅 Date/Heure : ${formattedDateTime}
+
+🎵 Préférences à bord :
+🎶 Musique : ${musicText}
+🌡️ Température : ${temperatureText}
+💬 Conversation : ${conversationText}`
         : `Hello, I would like to book a ride.
 
 📍 Departure: ${departure}
@@ -611,7 +644,12 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
 👥 Passengers: ${data.numberOfPassengers}
 👶 Baby seat: ${babySeatText}
 💳 Payment: ${paymentMethodText}
-📅 Date/Time: ${formattedDateTime}`
+📅 Date/Time: ${formattedDateTime}
+
+🎵 On-board preferences:
+🎶 Music: ${musicText}
+🌡️ Temperature: ${temperatureText}
+💬 Conversation: ${conversationText}`
       
       // Ouvrir WhatsApp directement
       const whatsappUrl = createWhatsAppUrl(whatsappNumber || DEFAULT_PHONE_NUMBER, adminMessage)
@@ -620,6 +658,11 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
       setIsSubmitting(false)
       setShowReservationForm(false)
       setReservationData(null)
+      
+      // Réinitialiser les préférences après réservation
+      setMusicPreference(null)
+      setTemperaturePreference(null)
+      setConversationPreference(null)
       
       // Message de succès
       const successMessage = locale === 'fr'
@@ -642,26 +685,23 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto animate-fade-in-up">
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 mb-4">
-          <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900">
-            {t.home.calculate}
-          </h2>
-        </div>
-        <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl mx-auto animate-fade-in px-4" style={{ animationDelay: '0.2s' }}>
+    <div className="w-full max-w-6xl mx-auto">
+      {/* En-tête épuré avec beaucoup d'espace */}
+      <div className="text-center mb-12 md:mb-16">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+          {locale === 'fr' ? 'Estimez votre course' : locale === 'ar' ? 'قدر رحلتك' : 'Estimate your ride'}
+        </h2>
+        <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
           {locale === 'fr' 
-            ? 'Obtenez une estimation instantanée de votre course en quelques secondes'
-            : 'Get an instant estimate of your ride in seconds'}
+            ? 'Chauffeur privé en quelques minutes. Prix affiché avant confirmation.'
+            : locale === 'ar'
+            ? 'سائق خاص في دقائق. السعر معروض قبل التأكيد.'
+            : 'Private chauffeur in minutes. Price shown before you confirm.'}
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-8 items-start">
-        {/* Formulaire en premier pour mobile-first */}
-        <div className="lg:col-span-3 order-2 lg:order-1">
-      <Card className="p-8 md:p-12">
-        <CardContent className="space-y-8 p-0">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 md:p-12">
+        <div className="space-y-8">
           {!isMapsLoaded && (
             <div className="p-4 text-sm text-blue-600 bg-blue-50 border-2 border-blue-100 rounded-xl mb-4 animate-pulse">
               <div className="flex items-center gap-2">
@@ -680,340 +720,433 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
             </div>
           )}
 
-          {/* Sélection du type de course */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              {locale === 'fr' ? 'Type de course' : 'Ride type'}
+          {/* Sélection du type de course - Style onglets premium */}
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+              {locale === 'fr' ? 'Détails du trajet' : locale === 'ar' ? 'تفاصيل الرحلة' : 'Trip details'}
             </Label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex gap-2 border-b border-gray-200">
               <button
                 type="button"
                 onClick={() => setRideType('immediate')}
-                className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 ${
                   rideType === 'immediate'
-                    ? 'border-primary bg-primary/10 text-primary shadow-lg scale-105'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-md'
+                    ? 'border-gray-900 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Zap className={`w-5 h-5 ${rideType === 'immediate' ? 'animate-pulse' : ''}`} />
-                <span className="font-semibold">
-                  {locale === 'fr' ? 'Course immédiate' : 'Immediate ride'}
-                </span>
+                {locale === 'fr' ? 'Course immédiate' : locale === 'ar' ? 'رحلة فورية' : 'Immediate ride'}
               </button>
               <button
                 type="button"
                 onClick={() => setRideType('reservation')}
-                className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                className={`px-6 py-3 text-sm font-semibold transition-all duration-200 border-b-2 ${
                   rideType === 'reservation'
-                    ? 'border-primary bg-primary/10 text-primary shadow-lg scale-105'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-md'
+                    ? 'border-gray-900 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <CalendarCheck className={`w-5 h-5 ${rideType === 'reservation' ? 'animate-pulse' : ''}`} />
-                <span className="font-semibold">
-                  {locale === 'fr' ? 'Réservation' : 'Reservation'}
-                </span>
+                {locale === 'fr' ? 'Réservation' : locale === 'ar' ? 'حجز' : 'Reservation'}
               </button>
             </div>
           </div>
 
-          {/* Sélection de la catégorie de véhicule */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
+          {/* Sélection de la catégorie de véhicule - Style épuré */}
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
               {t.home.vehicleCategory}
             </Label>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setVehicleCategory('standard')}
-                className={`group relative flex flex-col items-center justify-center gap-4 p-6 rounded-2xl border-2 transition-all duration-500 overflow-hidden ${
+                className={`group flex flex-col items-center justify-center gap-3 p-5 rounded-lg border transition-all duration-200 ${
                   vehicleCategory === 'standard'
-                    ? 'border-primary/50 bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 text-primary shadow-2xl shadow-primary/20 scale-105 ring-2 ring-primary/20'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-lg hover:scale-[1.02]'
+                    ? 'border-gray-900 bg-gray-50 text-gray-900'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                <div className={`relative p-4 rounded-2xl transition-all duration-500 ${
-                  vehicleCategory === 'standard' 
-                    ? 'bg-gradient-to-br from-primary/30 to-primary/10 shadow-lg shadow-primary/30' 
-                    : 'bg-gradient-to-br from-gray-100 to-gray-50 group-hover:from-gray-200 group-hover:to-gray-100'
-                }`}>
-                  <Car className={`w-10 h-10 transition-all duration-500 ${
-                    vehicleCategory === 'standard' 
-                      ? 'text-primary drop-shadow-lg' 
-                      : 'text-gray-600 group-hover:text-gray-800'
-                  } ${vehicleCategory === 'standard' ? 'animate-pulse' : ''}`} />
-                </div>
-                <span className={`font-bold text-sm transition-colors duration-300 ${
-                  vehicleCategory === 'standard' ? 'text-primary' : 'text-gray-700'
-                }`}>
+                <Car className={`w-6 h-6 transition-colors ${
+                  vehicleCategory === 'standard' ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'
+                }`} />
+                <span className="text-sm font-semibold">
                   {t.home.standard}
                 </span>
-                {vehicleCategory === 'standard' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                )}
+                <span className="text-xs text-gray-500">
+                  {locale === 'fr' ? 'Jusqu\'à 3 passagers' : locale === 'ar' ? 'حتى 3 ركاب' : 'Up to 3 passengers'}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setVehicleCategory('berline')}
-                className={`group relative flex flex-col items-center justify-center gap-4 p-6 rounded-2xl border-2 transition-all duration-500 overflow-hidden ${
+                className={`group flex flex-col items-center justify-center gap-3 p-5 rounded-lg border transition-all duration-200 ${
                   vehicleCategory === 'berline'
-                    ? 'border-amber-400/60 bg-gradient-to-br from-amber-50/80 via-yellow-50/60 to-amber-50/40 text-amber-700 shadow-2xl shadow-amber-300/30 scale-105 ring-2 ring-amber-300/30'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-lg hover:scale-[1.02]'
+                    ? 'border-gray-900 bg-gray-50 text-gray-900'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                <div className={`relative p-4 rounded-2xl transition-all duration-500 ${
-                  vehicleCategory === 'berline' 
-                    ? 'bg-gradient-to-br from-amber-200/40 via-yellow-100/30 to-amber-100/20 shadow-lg shadow-amber-300/40' 
-                    : 'bg-gradient-to-br from-gray-100 to-gray-50 group-hover:from-gray-200 group-hover:to-gray-100'
-                }`}>
-                  <Crown className={`w-10 h-10 transition-all duration-500 ${
-                    vehicleCategory === 'berline' 
-                      ? 'text-amber-600 drop-shadow-lg fill-amber-500/30' 
-                      : 'text-gray-600 group-hover:text-gray-800'
-                  } ${vehicleCategory === 'berline' ? 'animate-pulse' : ''}`} />
-                  <Gem className={`absolute -top-1 -right-1 w-4 h-4 transition-all duration-500 ${
-                    vehicleCategory === 'berline' ? 'text-amber-500 animate-ping' : 'opacity-0'
-                  }`} />
-                </div>
-                <span className={`font-bold text-sm transition-colors duration-300 ${
-                  vehicleCategory === 'berline' ? 'text-amber-700' : 'text-gray-700'
-                }`}>
+                <Crown className={`w-6 h-6 transition-colors ${
+                  vehicleCategory === 'berline' ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'
+                }`} />
+                <span className="text-sm font-semibold">
                   {t.home.berline}
                 </span>
-                {vehicleCategory === 'berline' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                )}
+                <span className="text-xs text-gray-500">
+                  {locale === 'fr' ? 'Berline confort, 3 passagers' : locale === 'ar' ? 'سيارة مريحة، 3 ركاب' : 'Comfort sedan, 3 passengers'}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setVehicleCategory('van')}
-                className={`group relative flex flex-col items-center justify-center gap-4 p-6 rounded-2xl border-2 transition-all duration-500 overflow-hidden ${
+                className={`group flex flex-col items-center justify-center gap-3 p-5 rounded-lg border transition-all duration-200 ${
                   vehicleCategory === 'van'
-                    ? 'border-blue-400/60 bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-blue-50/40 text-blue-700 shadow-2xl shadow-blue-300/30 scale-105 ring-2 ring-blue-300/30'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:shadow-lg hover:scale-[1.02]'
+                    ? 'border-gray-900 bg-gray-50 text-gray-900'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                <div className={`relative p-4 rounded-2xl transition-all duration-500 ${
-                  vehicleCategory === 'van' 
-                    ? 'bg-gradient-to-br from-blue-200/40 via-indigo-100/30 to-blue-100/20 shadow-lg shadow-blue-300/40' 
-                    : 'bg-gradient-to-br from-gray-100 to-gray-50 group-hover:from-gray-200 group-hover:to-gray-100'
-                }`}>
-                  <Users className={`w-10 h-10 transition-all duration-500 ${
-                    vehicleCategory === 'van' 
-                      ? 'text-blue-600 drop-shadow-lg' 
-                      : 'text-gray-600 group-hover:text-gray-800'
-                  } ${vehicleCategory === 'van' ? 'animate-pulse' : ''}`} />
-                </div>
-                <span className={`font-bold text-sm transition-colors duration-300 ${
-                  vehicleCategory === 'van' ? 'text-blue-700' : 'text-gray-700'
-                }`}>
+                <Users className={`w-6 h-6 transition-colors ${
+                  vehicleCategory === 'van' ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'
+                }`} />
+                <span className="text-sm font-semibold">
                   {t.home.van}
                 </span>
-                {vehicleCategory === 'van' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                )}
+                <span className="text-xs text-gray-500">
+                  {locale === 'fr' ? 'Van spacieux, jusqu\'à 7' : locale === 'ar' ? 'فان واسع، حتى 7' : 'Spacious van, up to 7'}
+                </span>
               </button>
             </div>
           </div>
 
-          {/* Option Aller-retour */}
-          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary/30 transition-all duration-200">
+          {/* Option Aller-retour - Style épuré */}
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <input
               type="checkbox"
               id="roundTrip"
               checked={isRoundTrip}
               onChange={(e) => setIsRoundTrip(e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
             />
             <label htmlFor="roundTrip" className="flex-1 cursor-pointer">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">
-                  {t.home.roundTrip}
-                </span>
-                <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
-                  {t.home.roundTripDescription}
-                </span>
-              </div>
+              <span className="text-sm font-medium text-gray-900">
+                {t.home.roundTrip}
+              </span>
             </label>
           </div>
 
+          {/* Champs de saisie - Style moderne épuré */}
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="departure" className="text-base">
+                <Label htmlFor="departure" className="text-sm font-semibold text-gray-900">
                   {t.home.departure}
                 </Label>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={handleUseMyLocation}
                   disabled={geolocationLoading || !isMapsLoaded}
-                  className="h-8 px-3 text-xs gap-1.5"
+                  className="text-xs text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors"
                 >
                   {geolocationLoading ? (
-                    <>
+                    <span className="flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>{locale === 'fr' ? 'Détection...' : 'Detecting...'}</span>
-                    </>
+                      {locale === 'fr' ? 'Détection...' : 'Detecting...'}
+                    </span>
                   ) : (
-                    <>
+                    <span className="flex items-center gap-1">
                       <Navigation className="w-3 h-3" />
-                      <span>{locale === 'fr' ? 'Ma position' : 'My location'}</span>
-                    </>
+                      {locale === 'fr' ? 'Ma position' : 'My location'}
+                    </span>
                   )}
-                </Button>
+                </button>
               </div>
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="departure"
                   ref={departureRef}
                   placeholder={
                     isMapsLoaded 
-                      ? (locale === 'fr' ? 'Votre adresse de départ' : 'Your departure address')
+                      ? (locale === 'fr' ? 'Entrez le point de départ' : 'Enter pickup location')
                       : (locale === 'fr' ? 'Chargement...' : 'Loading...')
                   }
                   value={departureInput}
                   onChange={(e) => {
                     const newValue = e.target.value
                     setDepartureInput(newValue)
-                    // Ne pas mettre à jour departure immédiatement - attendre le debounce
                     if (currentAddress && newValue !== currentAddress) {
                       resetGeolocation()
                     }
                   }}
-                  className="pl-12"
+                  className="pl-10 h-12 border-gray-200 focus:border-gray-900 focus:ring-gray-900 rounded-lg"
                   disabled={!isMapsLoaded}
                 />
               </div>
               {geolocationError && (
-                <div className="flex items-start gap-2 p-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg animate-fade-in">
-                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs">{geolocationError}</p>
-                </div>
+                <p className="text-xs text-amber-600">{geolocationError}</p>
               )}
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="arrival" className="text-base">
+            <div className="space-y-2">
+              <Label htmlFor="arrival" className="text-sm font-semibold text-gray-900">
                 {t.home.arrival}
               </Label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="arrival"
                   ref={arrivalRef}
                   placeholder={
                     isMapsLoaded 
-                      ? t.home.arrival 
+                      ? (locale === 'fr' ? 'Entrez la destination' : 'Enter drop-off location')
                       : (locale === 'fr' ? 'Chargement...' : 'Loading...')
                   }
                   value={arrivalInput}
                   onChange={(e) => {
                     const newValue = e.target.value
                     setArrivalInput(newValue)
-                    // Ne pas mettre à jour arrival immédiatement - attendre le debounce
                   }}
-                  className="pl-12"
+                  className="pl-10 h-12 border-gray-200 focus:border-gray-900 focus:ring-gray-900 rounded-lg"
                   disabled={!isMapsLoaded}
                 />
               </div>
             </div>
           </div>
 
-          {/* Champs date/heure uniquement pour les réservations */}
+          {/* Champs date/heure uniquement pour les réservations - Style épuré */}
           {rideType === 'reservation' && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-3">
-                  <Label htmlFor="date" className="text-base">
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="date" className="text-sm font-semibold text-gray-900">
                     {t.home.date}
                   </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => {
-                        setDate(e.target.value)
-                        setDateTimeError(null)
-                      }}
-                      className="pl-12"
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      setDate(e.target.value)
+                      setDateTimeError(null)
+                    }}
+                    className="h-12 border-gray-200 focus:border-gray-900 focus:ring-gray-900 rounded-lg"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
 
-                <div className="space-y-3">
-                  <Label htmlFor="time" className="text-base">
+                <div className="space-y-2">
+                  <Label htmlFor="time" className="text-sm font-semibold text-gray-900">
                     {t.home.time}
                   </Label>
-                  <div className="relative">
-                    <Clock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="time"
-                      type="time"
-                      value={time}
-                      onChange={(e) => {
-                        const newTime = e.target.value
-                        setTime(newTime)
-                        if (date && newTime) {
-                          const error = validateDateTime(date, newTime)
-                          if (error) {
-                            setDateTimeError(error)
-                            // ✅ FIX 2: Si date/heure invalide (< 1h), basculer automatiquement sur "Course immédiate"
-                            setRideType('immediate')
-                            // Afficher un message informatif
-                            setTimeout(() => {
-                              alert(locale === 'fr'
-                                ? '⚠️ La date/heure sélectionnée est trop proche. Passage automatique en "Course immédiate".'
-                                : locale === 'ar'
-                                ? '⚠️ التاريخ والوقت المحددان قريبان جداً. التحويل التلقائي إلى "رحلة فورية".'
-                                : '⚠️ Selected date/time is too close. Automatically switching to "Immediate ride".')
-                            }, 100)
-                          } else {
-                            setDateTimeError(null)
-                          }
+                  <Input
+                    id="time"
+                    type="time"
+                    value={time}
+                    onChange={(e) => {
+                      const newTime = e.target.value
+                      setTime(newTime)
+                      if (date && newTime) {
+                        const error = validateDateTime(date, newTime)
+                        if (error) {
+                          setDateTimeError(error)
+                          setRideType('immediate')
+                          setTimeout(() => {
+                            alert(locale === 'fr'
+                              ? '⚠️ La date/heure sélectionnée est trop proche. Passage automatique en "Course immédiate".'
+                              : locale === 'ar'
+                              ? '⚠️ التاريخ والوقت المحددان قريبان جداً. التحويل التلقائي إلى "رحلة فورية".'
+                              : '⚠️ Selected date/time is too close. Automatically switching to "Immediate ride".')
+                          }, 100)
+                        } else {
+                          setDateTimeError(null)
                         }
-                      }}
-                      className="pl-12"
-                    />
-                  </div>
+                      }
+                    }}
+                    className="h-12 border-gray-200 focus:border-gray-900 focus:ring-gray-900 rounded-lg"
+                  />
                 </div>
               </div>
               
               {dateTimeError && (
-                <div className="p-4 text-sm text-red-600 bg-red-50 border-2 border-red-200 rounded-xl animate-fade-in">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <p className="font-medium">{dateTimeError}</p>
-                  </div>
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+                  <p>{dateTimeError}</p>
                 </div>
               )}
             </div>
           )}
 
-          <Button
+          {/* Section Préférences à bord - Style premium minimaliste */}
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Label className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                {locale === 'fr' ? 'Préférences à bord' : locale === 'ar' ? 'تفضيلات على متن الطائرة' : 'On-board preferences'}
+              </Label>
+              <span className="px-2 py-0.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded">
+                {locale === 'fr' ? 'Premium' : locale === 'ar' ? 'مميز' : 'Premium'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              {locale === 'fr' 
+                ? 'Personnalisez votre expérience de trajet' 
+                : locale === 'ar' 
+                ? 'خصص تجربة رحلتك' 
+                : 'Customize your ride experience'}
+            </p>
+            
+            {/* Ambiance musicale */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {locale === 'fr' ? 'Musique' : locale === 'ar' ? 'موسيقى' : 'Music'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMusicPreference(musicPreference === 'silence' ? null : 'silence')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    musicPreference === 'silence'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <MessageSquareOff className={`w-5 h-5 ${musicPreference === 'silence' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Silence' : locale === 'ar' ? 'صمت' : 'Silence'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMusicPreference(musicPreference === 'classic' ? null : 'classic')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    musicPreference === 'classic'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Music2 className={`w-5 h-5 ${musicPreference === 'classic' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Classique' : locale === 'ar' ? 'كلاسيكي' : 'Classical'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMusicPreference(musicPreference === 'pop' ? null : 'pop')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    musicPreference === 'pop'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Music4 className={`w-5 h-5 ${musicPreference === 'pop' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Pop' : locale === 'ar' ? 'بوب' : 'Pop'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Température */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {locale === 'fr' ? 'Température' : locale === 'ar' ? 'درجة الحرارة' : 'Temperature'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTemperaturePreference(temperaturePreference === 'cool' ? null : 'cool')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    temperaturePreference === 'cool'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ThermometerSnowflake className={`w-5 h-5 ${temperaturePreference === 'cool' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Frais' : locale === 'ar' ? 'بارد' : 'Cool'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemperaturePreference(temperaturePreference === 'normal' ? null : 'normal')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    temperaturePreference === 'normal'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Thermometer className={`w-5 h-5 ${temperaturePreference === 'normal' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Normal' : locale === 'ar' ? 'عادي' : 'Normal'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemperaturePreference(temperaturePreference === 'warm' ? null : 'warm')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    temperaturePreference === 'warm'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ThermometerSun className={`w-5 h-5 ${temperaturePreference === 'warm' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium">
+                    {locale === 'fr' ? 'Chaud' : locale === 'ar' ? 'دافئ' : 'Warm'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Niveau de conversation */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {locale === 'fr' ? 'Conversation' : locale === 'ar' ? 'محادثة' : 'Conversation'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConversationPreference(conversationPreference === 'work' ? null : 'work')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    conversationPreference === 'work'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Briefcase className={`w-5 h-5 ${conversationPreference === 'work' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium text-center">
+                    {locale === 'fr' ? 'Travail/Silence' : locale === 'ar' ? 'عمل/صمت' : 'Work/Silence'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConversationPreference(conversationPreference === 'chat' ? null : 'chat')}
+                  className={`flex-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border transition-all duration-200 ${
+                    conversationPreference === 'chat'
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <MessageSquare className={`w-5 h-5 ${conversationPreference === 'chat' ? 'text-gray-900' : 'text-gray-400'}`} />
+                  <span className="text-xs font-medium text-center">
+                    {locale === 'fr' ? 'Discussion' : locale === 'ar' ? 'محادثة' : 'Chat'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bouton d'estimation - Style premium épuré */}
+          <button
             onClick={handleCalculate}
             disabled={apiLoading || (!departure && !departureInput) || (!arrival && !arrivalInput)}
-            className="w-full h-14 text-base relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            size="lg"
+            className="w-full h-14 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {apiLoading ? (
-              <span className="flex items-center justify-center gap-2">
+              <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {t.common.loading}
-              </span>
+                <span>{t.common.loading}</span>
+              </>
             ) : (
-              <span className="flex items-center justify-center gap-2">
-                <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                {t.home.estimatePrice}
-              </span>
+              <span>{t.home.estimatePrice}</span>
             )}
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
-          </Button>
+          </button>
 
           {apiError && (
             <div className="p-4 text-sm text-destructive bg-red-50 border-2 border-red-100 rounded-xl animate-fade-in">
@@ -1033,14 +1166,15 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
             </div>
           )}
 
+          {/* Résultat du calcul - Style premium épuré */}
           {calculation && (
             <div 
               id="calculation-result"
-              className="mt-8 p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100 space-y-6 shadow-xl hover:shadow-2xl transition-all duration-500 animate-fade-in"
+              className="mt-8 p-8 bg-white rounded-lg border border-gray-200 shadow-sm space-y-6"
             >
-              <div className="grid grid-cols-2 gap-6 pb-6 border-b border-gray-200">
+              <div className="grid grid-cols-2 gap-8 pb-6 border-b border-gray-200">
                 <div>
-                  <p className="text-sm font-semibold text-gray-600 mb-1">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
                     {t.home.distance}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
@@ -1048,7 +1182,7 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600 mb-1">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
                     {t.home.duration}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
@@ -1057,107 +1191,60 @@ export function RideCalculator({ locale, whatsappNumber = DEFAULT_PHONE_NUMBER }
                 </div>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-gray-700">
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
                     {t.home.estimatedPrice}
                   </span>
-                  <div className="flex items-center gap-2">
-                    {showSuccess && (
-                      <CheckCircle2 className="w-6 h-6 text-green-500 animate-scale-in" />
-                    )}
-                    <span className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                      {formatPrice(calculation.price, locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US')}
-                    </span>
-                  </div>
+                  <span className="text-4xl font-bold text-gray-900">
+                    {formatPrice(calculation.price, locale === 'fr' ? 'fr-FR' : locale === 'ar' ? 'ar-SA' : 'en-US')}
+                  </span>
                 </div>
                 
-                {/* ✅ Alerte trafic dense si le prix basé sur le temps est supérieur */}
+                {/* Alerte trafic dense - Style épuré */}
                 {calculation.isTrafficSurcharge && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-2 border-orange-300 rounded-xl shadow-md animate-fade-in">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
-                        <span className="text-xl">🚗</span>
-                        <span className="text-xl">⏳</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-orange-900 leading-relaxed">
-                          {locale === 'fr' ? (
-                            <>
-                              <span className="font-semibold">⚠️ Trafic dense détecté.</span> Le trajet va durer plus longtemps que prévu (environ{' '}
-                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} min</span>). Le prix a été ajusté pour tenir compte de cette durée.
-                            </>
-                          ) : locale === 'ar' ? (
-                            <>
-                              <span className="font-semibold">⚠️ تم اكتشاف ازدحام مروري.</span> ستستغرق الرحلة وقتاً أطول مما هو متوقع (حوالي{' '}
-                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} دقيقة</span>). تم تعديل السعر لمراعاة هذه المدة.
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-semibold">⚠️ Heavy traffic detected.</span> The journey will take longer than expected (approximately{' '}
-                              <span className="font-bold text-orange-950">{Math.round(calculation.duration / 60)} min</span>). The price has been adjusted to account for this duration.
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-900">
+                      {locale === 'fr' ? (
+                        <>⚠️ <span className="font-semibold">Trafic dense détecté.</span> Le trajet prendra environ{' '}
+                        <span className="font-bold">{Math.round(calculation.duration / 60)} min</span>. Le prix a été ajusté.</>
+                      ) : locale === 'ar' ? (
+                        <>⚠️ <span className="font-semibold">تم اكتشاف ازدحام مروري.</span> ستستغرق الرحلة حوالي{' '}
+                        <span className="font-bold">{Math.round(calculation.duration / 60)} دقيقة</span>. تم تعديل السعر.</>
+                      ) : (
+                        <>⚠️ <span className="font-semibold">Heavy traffic detected.</span> Journey will take approximately{' '}
+                        <span className="font-bold">{Math.round(calculation.duration / 60)} min</span>. Price has been adjusted.</>
+                      )}
+                    </p>
                   </div>
                 )}
                 
                 {isRoundTrip && (
-                  <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200 animate-fade-in">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                    <p className="text-sm font-medium text-indigo-900">
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <CheckCircle2 className="w-4 h-4 text-gray-600" />
+                    <p className="text-sm font-medium text-gray-700">
                       {t.home.includesRoundTrip}
                     </p>
                   </div>
                 )}
               </div>
               
-              <Button 
+              <button
                 onClick={handleBook} 
                 disabled={isBooking || isSubmitting || (rideType === 'reservation' && !!dateTimeError)}
-                className="w-full h-14 text-base mt-6 relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl animate-pulse-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                size="lg"
+                className="w-full h-14 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isBooking ? (
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {locale === 'fr' ? 'Réservation...' : locale === 'ar' ? 'جارٍ الحجز...' : 'Booking...'}
-                  </span>
-                ) : (
                   <>
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      {t.home.bookRide}
-                      <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                    </span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>{locale === 'fr' ? 'Réservation...' : locale === 'ar' ? 'جارٍ الحجز...' : 'Booking...'}</span>
                   </>
+                ) : (
+                  <span>{t.home.bookRide}</span>
                 )}
-              </Button>
+              </button>
             </div>
           )}
-        </CardContent>
-      </Card>
-        </div>
-
-        {/* Image décorative - après le formulaire pour ne pas masquer le contenu */}
-        <div className="hidden lg:block lg:col-span-2 order-1 lg:order-2 animate-slide-in-right" style={{ animationDelay: '0.3s' }}>
-          <div className="sticky top-24 relative h-[500px] rounded-2xl overflow-hidden shadow-2xl group hover:shadow-3xl transition-all duration-500">
-            <Image
-              src="/images/calculator-side.jpg"
-              alt="Service VTC premium"
-              fill
-              className="object-cover group-hover:scale-110 transition-transform duration-700"
-              sizes="(max-width: 1024px) 0vw, 40vw"
-              placeholder="blur"
-              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-              }}
-            />
-          </div>
         </div>
       </div>
 

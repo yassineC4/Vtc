@@ -10,20 +10,20 @@
     --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 239 84% 67%;
+    --primary: 221 83% 53%; /* Bleu premium plus subtil */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 210 20% 98%; /* Gris très doux */
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 98%;
+    --muted: 210 20% 98%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 210 20% 98%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 239 84% 67%;
-    --radius: 1rem;
+    --border: 214.3 20% 92%; /* Bordures très fines et douces */
+    --input: 214.3 20% 96%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem; /* Coins légèrement arrondis */
   }
 }
 
@@ -32,15 +32,17 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-white text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Amélioration du texte sur mobile */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-bold tracking-tight;
+    letter-spacing: -0.02em;
   }
 
   /* Optimisation mobile : améliorer la lisibilité */

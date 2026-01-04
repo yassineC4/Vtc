@@ -84,17 +84,18 @@ export function FAQSection() {
   ]
 
   return (
-    <section className="py-16 md:py-24 px-4 bg-gradient-to-b from-gray-50 to-white">
+    <section className="py-20 md:py-32 px-4 bg-white">
       <div className="container mx-auto max-w-4xl">
-        <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 mb-4">
+        {/* En-tête avec beaucoup d'espace */}
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
             {locale === 'fr' 
               ? 'Questions Fréquemment Posées' 
               : locale === 'ar' 
               ? 'الأسئلة الشائعة' 
               : 'Frequently Asked Questions'}
           </h2>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
             {locale === 'fr'
               ? 'Réponses concises pour les réservations de chauffeur premium en France.'
               : locale === 'ar'
@@ -103,29 +104,30 @@ export function FAQSection() {
           </p>
         </div>
 
-        <div className="space-y-4">
+        {/* Liste FAQ - Style premium épuré */}
+        <div className="space-y-3">
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl border-2 border-gray-200 hover:border-primary/50 transition-colors duration-300 overflow-hidden"
+              className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors duration-200 overflow-hidden"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
               >
-                <span className="text-lg font-semibold text-gray-900 pr-4">
+                <span className="text-base font-semibold text-gray-900 pr-4">
                   {faq.question}
                 </span>
                 {openIndex === index ? (
-                  <ChevronUp className="w-5 h-5 text-primary flex-shrink-0" />
+                  <ChevronUp className="w-5 h-5 text-gray-600 flex-shrink-0" />
                 ) : (
                   <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 )}
               </button>
               
               {openIndex === index && (
-                <div className="px-6 pb-4">
-                  <p className="text-gray-600 leading-relaxed">
+                <div className="px-6 pb-4 border-t border-gray-100">
+                  <p className="text-sm text-gray-600 leading-relaxed pt-4">
                     {faq.answer}
                   </p>
                 </div>
@@ -134,11 +136,12 @@ export function FAQSection() {
           ))}
         </div>
 
-        <div className="mt-12 text-center p-6 bg-primary/5 rounded-xl border-2 border-primary/20">
-          <p className="text-lg font-semibold text-gray-900 mb-2">
+        {/* Section besoin d'aide - Style épuré */}
+        <div className="mt-16 text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-base font-semibold text-gray-900 mb-2">
             {locale === 'fr' ? 'Besoin d\'aide ?' : locale === 'ar' ? 'تحتاج مساعدة؟' : 'Need help?'}
           </p>
-          <p className="text-gray-600">
+          <p className="text-sm text-gray-600">
             {locale === 'fr'
               ? '24/7 pour les réservations • Réponses en quelques minutes'
               : locale === 'ar'

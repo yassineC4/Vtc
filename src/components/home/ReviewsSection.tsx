@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { Review } from '@/types'
@@ -43,7 +42,6 @@ export function ReviewsSection({ locale }: ReviewsSectionProps) {
       }
     } catch (error) {
       console.error('Error loading reviews:', error)
-      // En cas d'erreur, garder un tableau vide plutôt que de planter
       setReviews([])
     } finally {
       setLoading(false)
@@ -52,25 +50,44 @@ export function ReviewsSection({ locale }: ReviewsSectionProps) {
 
   const handleReviewSubmitted = () => {
     setShowForm(false)
-    // Optionnel: recharger les avis après soumission
+    loadReviews()
   }
 
+  // Calculer la note moyenne
+  const averageRating = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : '0.0'
+
   return (
-    <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6 bg-white">
+    <section className="py-20 md:py-32 px-4 bg-white">
       <div className="container mx-auto max-w-7xl">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
+        {/* En-tête avec beaucoup d'espace */}
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
             {t.home.reviews}
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
             {locale === 'fr' 
-              ? 'Découvrez ce que nos clients pensent de notre service'
-              : 'Discover what our customers think about our service'}
+              ? 'Fait confiance pour les transferts aéroport, voyages d\'affaires et événements.'
+              : locale === 'ar'
+              ? 'موثوق به لنقل المطار والسفر التجاري والفعاليات.'
+              : 'Trusted for airport transfers, business travel, and events.'}
           </p>
+          
+          {/* Note moyenne */}
+          {reviews.length > 0 && (
+            <div className="flex items-center justify-center gap-2 mb-8">
+              <span className="text-3xl font-bold text-gray-900">{averageRating}</span>
+              <span className="text-gray-600">/5</span>
+              <span className="text-sm text-gray-500">
+                {locale === 'fr' ? 'Basé sur les trajets récents' : locale === 'ar' ? 'بناءً على الرحلات الأخيرة' : 'Based on recent rides'}
+              </span>
+            </div>
+          )}
+          
           <Button 
             onClick={() => setShowForm(true)}
-            size="lg"
-            className="rounded-full"
+            className="bg-gray-900 text-white hover:bg-gray-800 rounded-lg px-6 py-3"
           >
             {t.home.leaveReview}
           </Button>
@@ -97,42 +114,43 @@ export function ReviewsSection({ locale }: ReviewsSectionProps) {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {reviews.map((review) => (
-              <Card key={review.id} className="p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                <CardHeader className="p-0 mb-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <CardTitle className="text-lg font-bold text-gray-900">
+              <div 
+                key={review.id} 
+                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-300 p-6"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h4 className="text-base font-bold text-gray-900 mb-1">
                       {review.author_name}
-                    </CardTitle>
-                    <div className="flex items-center gap-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-5 w-5 ${
-                            i < review.rating
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-gray-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      {new Date(review.created_at).toLocaleDateString(
+                        locale === 'fr' ? 'fr-FR' : 'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        }
+                      )}
+                    </p>
                   </div>
-                </CardHeader>
-                <CardContent className="p-0 space-y-3">
-                  <p className="text-gray-600 leading-relaxed">
-                    "{review.content}"
-                  </p>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {new Date(review.created_at).toLocaleDateString(
-                      locale === 'fr' ? 'fr-FR' : 'en-US',
-                      {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      }
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < review.rating
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  "{review.content}"
+                </p>
+              </div>
             ))}
           </div>
         )}
@@ -140,4 +158,3 @@ export function ReviewsSection({ locale }: ReviewsSectionProps) {
     </section>
   )
 }
-

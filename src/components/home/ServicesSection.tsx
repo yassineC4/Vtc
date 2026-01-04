@@ -11,62 +11,56 @@ export function ServicesSection() {
     {
       icon: Plane,
       title: locale === 'fr' ? 'Transfert Aéroport' : locale === 'ar' ? 'نقل المطار' : 'Airport transfer',
-      features: [
-        locale === 'fr' ? 'Accueil personnalisé' : locale === 'ar' ? 'استقبال شخصي' : 'Meet & greet',
-        locale === 'fr' ? 'Suivi des vols' : locale === 'ar' ? 'تتبع الرحلات' : 'Flight tracking',
-        locale === 'fr' ? 'Prix fixe' : locale === 'ar' ? 'سعر ثابت' : 'Fixed price',
-      ],
-      color: 'from-blue-500 to-cyan-500',
+      description: locale === 'fr'
+        ? 'Accueil personnalisé • Suivi des vols • Prix fixe'
+        : locale === 'ar'
+        ? 'استقبال شخصي • تتبع الرحلات • سعر ثابت'
+        : 'Meet & greet • Flight tracking • Fixed price',
     },
     {
       icon: Train,
       title: locale === 'fr' ? 'Transfert Gare' : locale === 'ar' ? 'نقل المحطة' : 'Station transfer',
-      features: [
-        locale === 'fr' ? 'Prise en charge à l\'heure' : locale === 'ar' ? 'استلام في الوقت المحدد' : 'On-time pickup',
-        locale === 'fr' ? 'Assistance sur le quai' : locale === 'ar' ? 'مساعدة على المنصة' : 'Platform assistance',
-        locale === 'fr' ? 'Prix fixe' : locale === 'ar' ? 'سعر ثابت' : 'Fixed price',
-      ],
-      color: 'from-green-500 to-emerald-500',
+      description: locale === 'fr'
+        ? 'Prise en charge à l\'heure • Assistance sur le quai • Prix fixe'
+        : locale === 'ar'
+        ? 'استلام في الوقت المحدد • مساعدة على المنصة • سعر ثابت'
+        : 'On-time pickup • Platform assistance • Fixed price',
     },
     {
       icon: Clock,
       title: locale === 'fr' ? 'Chauffeur à disposition' : locale === 'ar' ? 'سائق تحت الطلب' : 'Driver at disposal',
-      features: [
-        locale === 'fr' ? 'Réservation à l\'heure' : locale === 'ar' ? 'حجز بالساعة' : 'Hourly booking',
-        locale === 'fr' ? 'Flexibilité multi-étapes' : locale === 'ar' ? 'مرونة متعددة المحطات' : 'Multi-stop flexibility',
-        locale === 'fr' ? 'Discret' : locale === 'ar' ? 'منضبط' : 'Discreet',
-      ],
-      color: 'from-purple-500 to-pink-500',
+      description: locale === 'fr'
+        ? 'Réservation à l\'heure • Flexibilité multi-étapes • Discret'
+        : locale === 'ar'
+        ? 'حجز بالساعة • مرونة متعددة المحطات • منضبط'
+        : 'Hourly booking • Multi-stop flexibility • Discreet',
     },
     {
       icon: Briefcase,
       title: locale === 'fr' ? 'Voyage d\'affaires' : locale === 'ar' ? 'السفر التجاري' : 'Business travel',
-      features: [
-        locale === 'fr' ? 'Véhicules exécutifs' : locale === 'ar' ? 'مركبات تنفيذية' : 'Executive vehicles',
-        locale === 'fr' ? 'Planification prioritaire' : locale === 'ar' ? 'جدولة أولوية' : 'Priority scheduling',
-        locale === 'fr' ? 'Facture' : locale === 'ar' ? 'فاتورة' : 'Invoice',
-      ],
-      color: 'from-amber-500 to-orange-500',
+      description: locale === 'fr'
+        ? 'Véhicules exécutifs • Planification prioritaire • Facture'
+        : locale === 'ar'
+        ? 'مركبات تنفيذية • جدولة أولوية • فاتورة'
+        : 'Executive vehicles • Priority scheduling • Invoice',
     },
     {
       icon: Heart,
       title: locale === 'fr' ? 'Mariages & Réceptions' : locale === 'ar' ? 'الأعراس والاستقبالات' : 'Weddings & receptions',
-      features: [
-        locale === 'fr' ? 'Arrivées des invités' : locale === 'ar' ? 'وصول الضيوف' : 'Guest arrivals',
-        locale === 'fr' ? 'Coordination horaire' : locale === 'ar' ? 'تنسيق التوقيت' : 'Timed coordination',
-        locale === 'fr' ? 'Premium' : locale === 'ar' ? 'مميز' : 'Premium',
-      ],
-      color: 'from-rose-500 to-red-500',
+      description: locale === 'fr'
+        ? 'Arrivées des invités • Coordination horaire • Premium'
+        : locale === 'ar'
+        ? 'وصول الضيوف • تنسيق التوقيت • مميز'
+        : 'Guest arrivals • Timed coordination • Premium',
     },
     {
       icon: MapPin,
       title: locale === 'fr' ? 'Longue distance' : locale === 'ar' ? 'مسافات طويلة' : 'Long distance',
-      features: [
-        locale === 'fr' ? 'Arrêts confort' : locale === 'ar' ? 'محطات راحة' : 'Comfort stops',
-        locale === 'fr' ? 'Tarification prévisible' : locale === 'ar' ? 'تسعير متوقع' : 'Predictable pricing',
-        locale === 'fr' ? 'Jour et nuit' : locale === 'ar' ? 'نهاراً وليلاً' : 'Day or night',
-      ],
-      color: 'from-indigo-500 to-blue-500',
+      description: locale === 'fr'
+        ? 'Arrêts confort • Tarification prévisible • Jour et nuit'
+        : locale === 'ar'
+        ? 'محطات راحة • تسعير متوقع • نهاراً وليلاً'
+        : 'Comfort stops • Predictable pricing • Day or night',
     },
   ]
 
@@ -82,17 +76,18 @@ export function ServicesSection() {
   }
 
   return (
-    <section className="py-16 md:py-24 px-4 bg-gradient-to-b from-white to-gray-50">
+    <section className="py-20 md:py-32 px-4 bg-white">
       <div className="container mx-auto max-w-7xl">
-        <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 mb-4">
+        {/* En-tête avec beaucoup d'espace */}
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
             {locale === 'fr' 
               ? 'Services VTC Premium' 
               : locale === 'ar' 
               ? 'خدمات VTC المميزة' 
               : 'Premium VTC services'}
           </h2>
-          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             {locale === 'fr'
               ? 'Services de chauffeur sur mesure, à la demande. Des aéroports aux galas, réservez un chauffeur privé en moins d\'une minute.'
               : locale === 'ar'
@@ -101,6 +96,7 @@ export function ServicesSection() {
           </p>
         </div>
 
+        {/* Grille de services - Style premium épuré */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {services.map((service, index) => {
             const IconComponent = service.icon
@@ -108,27 +104,28 @@ export function ServicesSection() {
               <div
                 key={index}
                 onClick={() => handleServiceClick(service.title)}
-                className="group relative bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-primary/50 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer"
+                className="group relative bg-white rounded-lg p-8 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
               >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${service.color} mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  <IconComponent className="w-6 h-6 text-white" />
+                {/* Icône discrète */}
+                <div className="mb-6">
+                  <div className="inline-flex p-3 rounded-lg bg-gray-50 group-hover:bg-gray-100 transition-colors duration-300">
+                    <IconComponent className="w-6 h-6 text-gray-700" />
+                  </div>
                 </div>
                 
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary transition-colors">
+                {/* Titre */}
+                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-gray-950 transition-colors">
                   {service.title}
                 </h3>
                 
-                <ul className="space-y-2">
-                  {service.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                {/* Description avec puces */}
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {service.description}
+                </p>
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <span className="text-sm font-semibold text-primary group-hover:underline">
+                {/* Lien discret en bas */}
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <span className="text-sm font-medium text-gray-900 group-hover:text-gray-950 transition-colors">
                     {locale === 'fr' ? 'Réserver →' : locale === 'ar' ? 'احجز →' : 'Book →'}
                   </span>
                 </div>

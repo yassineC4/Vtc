@@ -164,20 +164,8 @@ export function HomePageClient() {
         <ServicesSection />
 
         {/* Section Calculateur de Prix */}
-        <section id="ride-calculator" className="py-16 md:py-24 px-4 bg-gradient-to-b from-gray-50 to-white">
+        <section id="ride-calculator" className="py-20 md:py-32 px-4 bg-white">
           <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-                {locale === 'fr' ? 'Estimez votre course' : locale === 'ar' ? 'قدر رحلتك' : 'Estimate your ride'}
-              </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                {locale === 'fr'
-                  ? 'Chauffeur privé en quelques minutes. Prix affiché avant confirmation.'
-                  : locale === 'ar'
-                  ? 'سائق خاص في دقائق. السعر معروض قبل التأكيد.'
-                  : 'Private chauffeur in minutes. Price shown before you confirm.'}
-              </p>
-            </div>
             <RideCalculator locale={locale} />
           </div>
         </section>

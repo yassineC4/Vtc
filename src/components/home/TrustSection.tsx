@@ -37,13 +37,13 @@ export function TrustSection() {
   ]
 
   return (
-    <section className="py-12 md:py-16 px-4 bg-white">
+    <section className="py-16 md:py-24 px-4 bg-white">
       <div className="container mx-auto max-w-7xl">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 tracking-tight">
             {locale === 'fr' ? 'Ils nous font confiance' : locale === 'ar' ? 'يثقون بنا' : 'They trust us'}
           </h2>
-          <p className="text-gray-600">
+          <p className="text-base text-gray-600">
             {locale === 'fr' 
               ? 'Pour les entreprises, hôtels et événements' 
               : locale === 'ar' 
@@ -58,10 +58,10 @@ export function TrustSection() {
             return (
               <div
                 key={index}
-                className="flex flex-col items-center text-center p-6 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors duration-300"
+                className="flex flex-col items-center text-center p-8 rounded-lg border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 transition-all duration-200"
               >
-                <div className="p-4 rounded-full bg-primary/10 mb-4">
-                  <IconComponent className="w-8 h-8 text-primary" />
+                <div className="p-3 rounded-lg bg-gray-50 mb-4">
+                  <IconComponent className="w-6 h-6 text-gray-700" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {item.title}
