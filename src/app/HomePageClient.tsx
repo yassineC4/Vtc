@@ -8,9 +8,10 @@ import { RideCalculator } from '@/components/home/RideCalculator'
 import { ReviewsSection } from '@/components/home/ReviewsSection'
 import { ValueProposition } from '@/components/home/ValueProposition'
 import { ServicesSection } from '@/components/home/ServicesSection'
-import { OtherServices } from '@/components/home/OtherServices'
 import { FleetSection } from '@/components/home/FleetSection'
 import { FAQSection } from '@/components/home/FAQSection'
+import { CoverageSection } from '@/components/home/CoverageSection'
+import { ReadySection } from '@/components/home/ReadySection'
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import { Footer } from '@/components/shared/Footer'
 import { StructuredData } from '@/components/shared/StructuredData'
@@ -154,16 +155,21 @@ export function HomePageClient() {
       <main className="min-h-screen bg-white">
         <HeroSection />
         
-        {/* Section Trust */}
+        {/* Section Trust - They trust us */}
         <TrustSection />
         
-        {/* Section Value Proposition - Pourquoi nous choisir */}
+        {/* Section Value Proposition - More than a trip, a premium experience */}
         <ValueProposition />
 
-        {/* Section Services Premium */}
-        <ServicesSection />
+        {/* Section Coverage - Departures & arrivals, 24/7 */}
+        <CoverageSection />
 
-        {/* Section Calculateur de Prix */}
+        {/* Section Services Premium */}
+        <div id="services">
+          <ServicesSection />
+        </div>
+
+        {/* Section Calculateur de Prix - Smart estimator */}
         <section id="ride-calculator" className="py-20 md:py-32 px-4 bg-white">
           <div className="container mx-auto max-w-6xl">
             <RideCalculator locale={locale} />
@@ -172,17 +178,15 @@ export function HomePageClient() {
 
         {/* Section Flotte */}
         <FleetSection />
-
-        {/* Section Autres Services - Mise à disposition */}
-        <div id="other-services">
-          <OtherServices />
-        </div>
         
         {/* Section Avis Clients */}
         <ReviewsSection locale={locale} />
         
         {/* Section FAQ */}
         <FAQSection />
+
+        {/* Section Ready - Ready for your next ride? */}
+        <ReadySection />
         
         {/* Footer */}
         <Footer />

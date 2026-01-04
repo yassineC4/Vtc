@@ -89,7 +89,23 @@ export function HeroSection() {
           </p>
           
           {/* Badges */}
-          <div className="flex flex-wrap justify-center gap-4 mt-8 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+          {/* Bouton CTA */}
+          <div className="mt-8 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+            <button
+              onClick={() => {
+                const calculator = document.getElementById('ride-calculator')
+                if (calculator) {
+                  calculator.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }}
+              className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200 shadow-lg"
+            >
+              {locale === 'fr' ? 'Estimez le prix' : locale === 'ar' ? 'قدر السعر' : 'Estimate the price'}
+            </button>
+          </div>
+
+          {/* Badges */}
+          <div className="flex flex-wrap justify-center gap-4 mt-8 animate-fade-in" style={{ animationDelay: '0.8s' }}>
             <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
               <span className="text-sm font-semibold text-white">
                 {locale === 'fr' ? 'Prix fixe à l\'avance' : locale === 'ar' ? 'سعر ثابت مسبقاً' : 'Fixed price upfront'}

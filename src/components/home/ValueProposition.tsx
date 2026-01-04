@@ -60,6 +60,13 @@ export function ValueProposition() {
               ? 'أكثر من رحلة، تجربة مميزة'
               : 'More than a trip, a premium experience'}
           </h2>
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            {locale === 'fr'
+              ? 'Aéroports, événements, longues distances — nous gérons tout.'
+              : locale === 'ar'
+              ? 'المطارات، الفعاليات، المسافات الطويلة — نتعامل مع كل شيء.'
+              : 'Airports, events, long distances — we handle it all.'}
+          </p>
         </div>
 
         {/* Grille de features - Style premium épuré */}
